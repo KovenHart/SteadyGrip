@@ -581,7 +581,13 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmd, int show) {
 		SetShortcut(InStartMenu, true);
 		return r;
 	}
-	if (cmd && wcsstr(cmd, L"--uninstall")) return DoInstall(false);
+	if (cmd && wcsstr(cmd, L"--uninstall")) {
+		CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+		const int r = DoInstall(false);
+		SetShortcut(OnDesktop, false);
+		SetShortcut(InStartMenu, false);
+		return r;
+	}
 
 	// Une seule instance.
 	HANDLE mutex = CreateMutexW(nullptr, TRUE, L"Local\\SteadyGripApp");

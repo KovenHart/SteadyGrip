@@ -1,0 +1,74 @@
+﻿STEADYGRIP
+==========
+
+Stabilise les manettes des casques Pimax suivis par leurs caméras (Dream Air SLAM, Crystal Super...)
+dans les jeux OpenXR : moins de tremblements quand vous visez, et l'arme reste en main quand une
+manette sort du champ des caméras.
+
+SteadyGrip est un projet indépendant, sans lien avec Pimax. Il ne modifie aucun fichier ni aucun
+programme de Pimax : il lit seulement, en mémoire, l'état de suivi que le service Pimax écrit dans
+son journal.
+
+
+CE QU'IL FAUT
+-------------
+- Windows 10 ou 11, 64 bits.
+- Un casque Pimax suivi par ses caméras, avec Pimax Play ou Pimax EVO, et un jeu OpenXR.
+- Rien d'autre : le programme est déjà compilé. Sa fenêtre utilise le moteur WebView2 de Microsoft,
+  présent dans Windows 11 et Windows 10 à jour (sinon :
+  https://developer.microsoft.com/microsoft-edge/webview2/).
+
+
+INSTALLATION OU MISE À JOUR
+---------------------------
+1. Extrayez toute l'archive (clic droit sur le .zip, « Extraire tout »).
+2. Dans le dossier extrait, double-cliquez sur Installer.bat.
+   - Windows peut afficher « Windows a protégé votre ordinateur » : le programme n'est pas signé.
+     Cliquez sur « Informations complémentaires » puis « Exécuter quand même ».
+   - Répondez Oui à la demande d'autorisation d'administrateur : elle sert à déclarer SteadyGrip
+     auprès d'OpenXR et à lire l'état de suivi des manettes dans le service Pimax.
+
+Le programme s'installe dans C:\SteadyGrip, avec un raccourci sur le bureau et dans le menu
+Démarrer. Lors d'une mise à jour, vos réglages et vos jeux sont conservés. Fermez votre jeu VR
+avant de mettre à jour. Le dossier extrait peut être supprimé une fois l'installation terminée.
+
+
+UTILISATION
+-----------
+1. Lancez SteadyGrip (raccourci du bureau) avant de jouer. Le bandeau du haut doit dire que tout
+   est prêt.
+2. Lancez votre jeu : il apparaît dans « Mes jeux » avec la mention EN COURS.
+3. Cliquez sur le jeu pour choisir sa stabilité de la visée (Désactivée, Réactive, Équilibrée,
+   Très stable) et activer « Armes à deux mains ». Les changements s'appliquent tout de suite.
+
+Conseil : tenez l'arme un peu devant le visage plutôt que collée sous le casque. Juste sous le
+casque, les caméras ne voient presque plus la manette.
+
+Un jeu peut aussi être ajouté à la main (carte « Ajouter un jeu ») : depuis Steam, ou n'importe
+quel programme .exe, avec sa jaquette.
+
+
+DÉSINSTALLATION
+---------------
+Double-cliquez sur Desinstaller.bat dans C:\SteadyGrip (il retire la couche OpenXR et les
+raccourcis), puis supprimez ce dossier. Vos réglages sont dans %LOCALAPPDATA%\SteadyGrip.
+
+
+EN CAS DE PROBLÈME
+------------------
+- Journal : %LOCALAPPDATA%\SteadyGrip\SteadyGrip.log. Il indique si SteadyGrip s'est chargé dans
+  le jeu.
+- Le jeu n'apparaît pas « EN COURS » : il n'utilise peut-être pas OpenXR (jeu SteamVR natif), ou
+  il utilise un autre runtime OpenXR que celui de Pimax.
+- « Version de Pimax non reconnue » : une mise à jour de Pimax a changé son journal. SteadyGrip
+  continue de lisser, sans le signal de perte.
+- Un jeu se comporte bizarrement : choisissez « Désactivée » pour ce jeu, ou lancez
+  Desinstaller.bat.
+- Les jeux protégés par un anti-triche peuvent refuser les API layers OpenXR.
+
+Pour signaler un problème : https://github.com/KovenHart/SteadyGrip/issues, avec le numéro de
+version, le jeu, le journal et le dernier fichier C:\ProgramData\Pimax\slam\controller_*.txt.
+
+English: README-EN.txt.
+Guide complet : docs\GUIDE.md. Nouveautés : CHANGELOG.md. Licence : LICENSE (MIT).
+Composants tiers : THIRD-PARTY.md.

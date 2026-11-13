@@ -13,6 +13,7 @@ What's new in each SteadyGrip version, most recent first.
 - **Per-game settings** stored by Steam app ID or by executable. Profiles created before 0.6 are migrated automatically.
 - "Very stable" now uses 30 ms of motion smoothing, the value from the best measured session.
 - **SteadyGrip icon**, and **desktop and Start menu shortcuts** created at install time. They can be removed in Settings › Raccourcis.
+- **One double-click install**: `Installer.bat` copies the program to `C:\SteadyGrip`, registers the layer and creates the shortcuts; `Desinstaller.bat` removes the layer and the shortcuts.
 - The interface uses WebView2, Windows' web engine. The SDK is downloaded at build time.
 
 ## 0.5.2

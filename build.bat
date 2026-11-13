@@ -16,7 +16,7 @@ echo.
 echo ------------------------------------------------------------
 if "%RC%"=="0" (
   echo Termine : le resultat est dans le dossier dist\.
-  echo Copie ce dossier a son emplacement definitif, puis lance SteadyGripApp.exe.
+  echo Pour l'installer dans C:\SteadyGrip avec les raccourcis : Installer.bat.
 ) else (
   echo ECHEC, code %RC%. Le detail est ci-dessus et dans build.log.
 )
@@ -40,6 +40,7 @@ copy /y build\bin\Release\SteadyGrip.dll dist\ >nul || exit /b 5
 copy /y build\bin\Release\XR_APILAYER_NOVENDOR_steadygrip.json dist\ >nul || exit /b 5
 copy /y build\bin\Release\SteadyGripApp.exe dist\ >nul || exit /b 5
 xcopy /e /i /y /q build\bin\Release\ui dist\ui >nul || exit /b 5
+copy /y Desinstaller.bat dist\ >nul || exit /b 5
 copy /y README.md dist\ >nul
 copy /y LICENSE dist\ >nul
 exit /b 0

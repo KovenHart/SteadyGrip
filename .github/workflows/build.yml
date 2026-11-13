@@ -1,7 +1,7 @@
 # Compilation automatique de SteadyGrip sur une machine Windows de GitHub.
 #
 # - À chaque envoi (push) ou demande de fusion (pull request) : compile la couche OpenXR, l'application
-#   et les tests (MSVC), lance les tests, construit le paquet et le joint au résultat de l'exécution
+#   et les tests (MSVC), lance les tests, construit le paquet (Installer.bat + programme\) et le joint au résultat de l'exécution
 #   (onglet Actions > l'exécution > Artifacts).
 # - À chaque étiquette de la forme v1.2.3 : en plus, crée un brouillon de version (Releases) avec le
 #   paquet. Il reste à le relire et à cliquer sur « Publish release ».
@@ -65,11 +65,17 @@ jobs:
           $version = '${{ steps.version.outputs.version }}'
           $name = "SteadyGrip-$version-win64"
           $dir = "release/$name"
-          New-Item -ItemType Directory -Force $dir | Out-Null
+          # Racine : de quoi installer et lire ; programme\ : ce qui est copié dans C:\SteadyGrip.
+          $prog = "$dir/programme"
+          New-Item -ItemType Directory -Force $prog, "$dir/docs" | Out-Null
           $bin = 'build/bin/Release'
-          Copy-Item "$bin/SteadyGrip.dll", "$bin/XR_APILAYER_NOVENDOR_steadygrip.json", "$bin/SteadyGripApp.exe" $dir
-          Copy-Item "$bin/ui" "$dir/ui" -Recurse
-          Copy-Item README.md, README.en.md, CHANGELOG.md, CHANGELOG.en.md, LICENSE, THIRD-PARTY.md $dir
+          Copy-Item "$bin/SteadyGrip.dll", "$bin/XR_APILAYER_NOVENDOR_steadygrip.json", "$bin/SteadyGripApp.exe", Desinstaller.bat $prog
+          Copy-Item "$bin/ui" "$prog/ui" -Recurse
+          Copy-Item Installer.bat, docs/LISEZ-MOI.txt, docs/README-EN.txt, README.md, README.en.md, CHANGELOG.md, CHANGELOG.en.md, LICENSE, THIRD-PARTY.md $dir
+          Copy-Item docs/GUIDE.md, docs/GUIDE.en.md, docs/*.png $dir/docs
+          foreach ($f in 'Installer.bat', 'LISEZ-MOI.txt', 'README-EN.txt', 'programme/Desinstaller.bat') {
+            if (-not (Get-Content -Raw "$dir/$f").Contains("`r`n")) { throw "$f n'est pas en fins de ligne Windows (CRLF)." }
+          }
           Compress-Archive -Path "$dir/*" -DestinationPath "release/$name.zip" -Force
           $hash = (Get-FileHash "release/$name.zip" -Algorithm SHA256).Hash.ToLower()
           "$hash  $name.zip" | Set-Content "release/$name.zip.sha256" -Encoding ascii

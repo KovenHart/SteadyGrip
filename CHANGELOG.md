@@ -13,6 +13,7 @@ Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 - **Réglages par jeu** rangés par numéro Steam ou par programme. Les profils créés avant la 0.6 sont repris automatiquement.
 - « Très stable » passe à 30 ms de lissage en mouvement : la valeur de la meilleure session mesurée.
 - **Icône SteadyGrip**, et **raccourcis sur le bureau et dans le menu Démarrer**, créés à l'installation. On peut les retirer dans Paramètres › Raccourcis.
+- **Installation en un double-clic** : `Installer.bat` copie le programme dans `C:\SteadyGrip`, déclare la couche et crée les raccourcis ; `Desinstaller.bat` retire la couche et les raccourcis.
 - L'interface utilise WebView2, le moteur web de Windows. Le SDK est téléchargé à la compilation.
 
 ## 0.5.2
