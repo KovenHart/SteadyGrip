@@ -61,7 +61,7 @@ cmake --build build --config Release
 ## Installation
 
 1. Copy the files and the `ui` folder to a permanent folder, e.g. `C:\Program Files\SteadyGrip`.
-2. Run `SteadyGripApp.exe` (Windows asks for administrator rights) and click **Installer** in the top banner. The layer registers under `HKLM\SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit`.
+2. Run `SteadyGripApp.exe` (Windows asks for administrator rights) and click **Installer** in the top banner. The layer registers under `HKLM\SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit`, and a SteadyGrip shortcut is created on the desktop and in the Start menu (for all users). Settings › Raccourcis removes or restores them.
 3. Before each session, run `SteadyGripApp.exe`: the banner should read "Tout est prêt : lance ton jeu" (everything is ready).
 4. Launch an OpenXR game: it shows up as "EN COURS" (running) in My games.
 

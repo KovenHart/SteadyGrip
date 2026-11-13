@@ -76,6 +76,44 @@ std::vector<std::wstring> RegisteredManifests() {
 	return out;
 }
 
+// --- Raccourcis (bureau et menu Démarrer, pour tous les utilisateurs : l'application tourne en administrateur)
+enum Where { OnDesktop = 0, InStartMenu = 1 };
+
+std::wstring ShortcutPath(Where where) {
+	PWSTR dir = nullptr;
+	std::wstring out;
+	if (SUCCEEDED(SHGetKnownFolderPath(where == OnDesktop ? FOLDERID_PublicDesktop : FOLDERID_CommonPrograms, 0, nullptr, &dir))) {
+		out = std::wstring(dir) + L"\\SteadyGrip.lnk";
+		CoTaskMemFree(dir);
+	}
+	return out;
+}
+
+bool HasShortcut(Where where) {
+	const std::wstring p = ShortcutPath(where);
+	return !p.empty() && FileExists(p);
+}
+
+// Crée (ou remplace, si l'application a été déplacée) le raccourci, ou le supprime.
+void SetShortcut(Where where, bool on) {
+	const std::wstring path = ShortcutPath(where);
+	if (path.empty()) return;
+	if (!on) {
+		DeleteFileW(path.c_str());
+		return;
+	}
+	wchar_t exe[MAX_PATH];
+	GetModuleFileNameW(nullptr, exe, MAX_PATH);
+	ComPtr<IShellLinkW> link;
+	if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&link)))) return;
+	link->SetPath(exe);
+	link->SetWorkingDirectory(ExeDir().c_str());
+	link->SetIconLocation(exe, 0);
+	link->SetDescription(L"SteadyGrip : stabilisation des manettes");
+	ComPtr<IPersistFile> file;
+	if (SUCCEEDED(link.As(&file))) file->Save(path.c_str(), TRUE);
+}
+
 int DoInstall(bool install) {
 	HKEY key;
 	if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, kImplicitKey, 0, nullptr, 0, KEY_ALL_ACCESS | KEY_WOW64_64KEY, nullptr, &key, nullptr) != ERROR_SUCCESS)
@@ -254,6 +292,7 @@ std::string BuildState() {
 
 	std::string out = "{\"type\":\"state\",\"version\":" + JsonStr(kVersion);
 	out += ",\"theme\":" + JsonStr(Narrow(IniGetStr(L"Interface", L"Theme")));
+	out += ",\"desktop\":" + JsonBool(HasShortcut(OnDesktop)) + ",\"startMenu\":" + JsonBool(HasShortcut(InStartMenu));
 	out += ",\"layer\":" + std::to_string(layer) + ",\"ready\":" + JsonBool(layer == 1 && signalOk) + ",\"readyText\":" + JsonStr(readyText);
 	out += ",\"checks\":[{\"ok\":" + JsonBool(layer == 1) + ",\"text\":" + JsonStr(layer == 1 ? "Stabilisation installée" : "Stabilisation non installée") + "}";
 	out += ",{\"ok\":" + JsonBool(pimaxOk) + ",\"text\":" + JsonStr(pimaxText) + "}";
@@ -381,7 +420,11 @@ void OnMessage(const std::string& text) {
 	const std::string id = m["id"].text;
 	if (cmd == "ready") { SendState(true); return; }
 	if (cmd == "theme") IniSetStr(L"Interface", L"Theme", Widen(m["value"].text));
-	else if (cmd == "install") DoInstall(true);
+	else if (cmd == "install") {
+		DoInstall(true);
+		SetShortcut(OnDesktop, true); // raccourcis créés à l'installation (et remis à jour si le dossier a changé)
+		SetShortcut(InStartMenu, true);
+	} else if (cmd == "shortcut") SetShortcut(m["where"].text == "desktop" ? OnDesktop : InStartMenu, m["value"].truthy());
 	else if (cmd == "uninstall") DoInstall(false);
 	else if (cmd == "getGame") { SendGame(id); return; }
 	else if (cmd == "set") { ApplySetting(id, m["key"].text, m["value"]); SendGame(id); }
@@ -531,7 +574,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
 int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmd, int show) {
 	// Mode ligne de commande : SteadyGripApp.exe --install | --uninstall
-	if (cmd && wcsstr(cmd, L"--install")) return DoInstall(true);
+	if (cmd && wcsstr(cmd, L"--install")) {
+		CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+		const int r = DoInstall(true);
+		SetShortcut(OnDesktop, true);
+		SetShortcut(InStartMenu, true);
+		return r;
+	}
 	if (cmd && wcsstr(cmd, L"--uninstall")) return DoInstall(false);
 
 	// Une seule instance.
@@ -556,7 +605,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmd, int show) {
 	wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
 	wc.hbrBackground = CreateSolidBrush(RGB(17, 17, 17));
 	wc.lpszClassName = L"SteadyGripApp";
-	wc.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+	wc.hIcon = (HICON)LoadImageW(inst, MAKEINTRESOURCEW(1), IMAGE_ICON, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), 0);
+	wc.hIconSm = (HICON)LoadImageW(inst, MAKEINTRESOURCEW(1), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0);
 	RegisterClassExW(&wc);
 
 	const UINT dpi = GetDpiForSystem();

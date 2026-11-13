@@ -135,7 +135,7 @@ Tout est produit dans `build\bin\Release\` : `SteadyGrip.dll`, `XR_APILAYER_NOVE
 ## Installation
 
 1. Copie les trois fichiers et le dossier `ui` dans un dossier définitif, par exemple `C:\Program Files\SteadyGrip`.
-2. Lance `SteadyGripApp.exe` (Windows demande les droits administrateur) et clique sur **Installer** dans le bandeau du haut. La couche s'enregistre dans `HKLM\SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit`.
+2. Lance `SteadyGripApp.exe` (Windows demande les droits administrateur) et clique sur **Installer** dans le bandeau du haut. La couche s'enregistre dans `HKLM\SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit`, et un raccourci SteadyGrip est créé sur le bureau et dans le menu Démarrer (pour tous les utilisateurs du PC). Paramètres › Raccourcis permet de les retirer ou de les remettre.
 3. Avant chaque session de jeu : lance `SteadyGripApp.exe`. Le bandeau du haut doit dire « Tout est prêt : lance ton jeu ». S'il demande de faire sortir une manette du champ, fais-le quelques secondes.
 4. Lance un jeu OpenXR : il apparaît dans « Mes jeux » avec la mention « EN COURS », et sa page montre l'état de chaque main.
 

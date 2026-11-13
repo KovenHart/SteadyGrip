@@ -35,7 +35,7 @@ FetchContent_MakeAvailable(webview2)
 # Application compagnon
 # Elle demande les droits d'administrateur au lancement : nécessaires pour lire (sans rien modifier)
 # l'état de suivi des manettes dans le service Pimax. Son interface est la page du dossier « ui ».
-add_executable(SteadyGripApp WIN32 src/app/app.cpp src/app/PimaxReader.h src/app/Json.h src/app/Library.h
+add_executable(SteadyGripApp WIN32 src/app/app.cpp src/app/app.rc src/app/PimaxReader.h src/app/Json.h src/app/Library.h
   src/common/LogBuffer.h src/common/Steam.h)
 target_include_directories(SteadyGripApp PRIVATE ${webview2_SOURCE_DIR}/build/native/include)
 target_link_libraries(SteadyGripApp PRIVATE ${webview2_SOURCE_DIR}/build/native/x64/WebView2LoaderStatic.lib

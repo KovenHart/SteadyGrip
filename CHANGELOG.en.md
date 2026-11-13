@@ -12,6 +12,7 @@ What's new in each SteadyGrip version, most recent first.
 - **Cover art**: copied from Steam's cache on the PC, otherwise downloaded once from Steam's image server. You can pick your own image.
 - **Per-game settings** stored by Steam app ID or by executable. Profiles created before 0.6 are migrated automatically.
 - "Very stable" now uses 30 ms of motion smoothing, the value from the best measured session.
+- **SteadyGrip icon**, and **desktop and Start menu shortcuts** created at install time. They can be removed in Settings › Raccourcis.
 - The interface uses WebView2, Windows' web engine. The SDK is downloaded at build time.
 
 ## 0.5.2

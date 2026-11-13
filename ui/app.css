@@ -75,6 +75,7 @@ h2 { font-size: 24px; }
 /* Barre du haut */
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 28px; background: var(--head); border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .brand { display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 4px; color: var(--accent-line); border-radius: var(--btn); }
+.brand .logo { flex-shrink: 0; }
 .brand span { font-family: var(--hfont); font-weight: 600; font-size: 22px; color: var(--text); text-transform: var(--hcase); }
 .ready { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-radius: var(--btn); font-weight: 600; font-size: 14px; text-transform: var(--lcase); letter-spacing: var(--lspace); max-width: 60%; }
 .ready.ok { background: var(--ok-soft); border: 1px solid var(--ok); color: var(--ok-text); }
@@ -183,7 +184,7 @@ main { flex-grow: 1; overflow-y: auto; padding: 20px 28px 28px; }
 /* Paramètres */
 .settings { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
 .settings .panel { display: flex; flex-direction: column; gap: 14px; }
-.seg { display: inline-flex; gap: 4px; background: var(--bg); padding: 3px; border-radius: var(--btn); border: 1px solid var(--border); }
+.seg { align-self: flex-start; display: inline-flex; gap: 4px; background: var(--bg); padding: 3px; border-radius: var(--btn); border: 1px solid var(--border); }
 .seg button { padding: 8px 14px; border: none; border-radius: var(--btn); background: transparent; color: var(--muted); font-weight: 700; font-size: 13px; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 

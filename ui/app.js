@@ -156,6 +156,11 @@ function renderAdvanced() {
 }
 
 // --- Paramètres -------------------------------------------------------------------------------------
+function shortcutRow(where, title, text, on) {
+  return '<div class="toggle-row"><div><div class="t">' + title + '</div><div class="d">' + text + '</div></div>' +
+    '<button type="button" class="switch" role="switch" aria-checked="' + !!on + '" aria-label="' + esc(title) + '" data-action="shortcut" data-where="' + where + '"></button></div>';
+}
+
 function renderSettings() {
   const theme = state && state.theme === 'evo' ? 'evo' : 'classic';
   const layer = state ? state.layer : 0;
@@ -166,6 +171,10 @@ function renderSettings() {
       '<section class="panel"><h2>Apparence</h2><div class="seg" role="group" aria-label="Thème">' +
         '<button type="button" aria-pressed="' + (theme === 'classic') + '" data-action="theme" data-value="classic">Pimax Classic</button>' +
         '<button type="button" aria-pressed="' + (theme === 'evo') + '" data-action="theme" data-value="evo">Pimax EVO</button></div></section>' +
+      '<section class="panel" style="padding-top:10px;padding-bottom:6px"><h2 style="margin-top:8px">Raccourcis</h2>' +
+        shortcutRow('desktop', 'Raccourci sur le bureau', 'Une icône SteadyGrip sur le bureau.', state && state.desktop) +
+        shortcutRow('start', 'Dans le menu Démarrer', 'SteadyGrip dans la liste des applications de Windows.', state && state.startMenu) +
+      '</section>' +
       '<section class="panel"><h2>Stabilisation dans les jeux</h2><p class="note" style="margin:0">' + layerText + '</p>' +
         '<div class="row"><button type="button" class="btn primary" data-action="install">Installer</button><button type="button" class="btn ghost danger" data-action="uninstall">Désinstaller</button></div></section>' +
       '<section class="panel"><h2>Pimax</h2><p class="note" style="margin:0">' + esc(state && state.pimaxVersion ? state.pimaxVersion : 'Service Pimax non détecté.') + '</p>' +
@@ -221,6 +230,7 @@ function render() {
   else if (view === 'settings') renderSettings();
 }
 
+
 function go(v) { view = v; render(); $('#view').scrollTop = 0; }
 
 document.addEventListener('click', (e) => {
@@ -239,6 +249,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'setImage') send('setImage', { id: game.id });
   else if (a === 'remove') { if (confirm('Retirer « ' + game.name + ' » de tes jeux ? Ses réglages seront supprimés.')) { send('remove', { id: game.id }); game = null; go('library'); } }
   else if (a === 'install') send('install');
+  else if (a === 'shortcut') send('shortcut', { where: el.dataset.where, value: el.getAttribute('aria-checked') !== 'true' });
   else if (a === 'uninstall') send('uninstall');
   else if (a === 'theme') send('theme', { value: el.dataset.value });
   else if (a === 'add') { addTab = 'steam'; steamPick = null; steamGames = null; exeForm = { path: '', name: '', image: '' }; renderAdd(); send('listSteam'); }
@@ -312,7 +323,7 @@ if (host) host.addEventListener('message', (e) => onMessage(e.data));
 // --- Aperçu dans un navigateur (sans l'application) : données d'exemple -----------------------------
 function mock(msg) {
   const s = mock.s || (mock.s = {
-    type: 'state', version: '0.6', theme: 'classic', layer: 1, ready: true, readyText: 'Tout est prêt : lance ton jeu',
+    type: 'state', version: '0.6', theme: 'classic', desktop: true, startMenu: true, layer: 1, ready: true, readyText: 'Tout est prêt : lance ton jeu',
     checks: [{ ok: true, text: 'Stabilisation installée' }, { ok: true, text: 'Casque Pimax détecté' }, { ok: true, text: 'Détection des pertes de suivi active' }],
     pimaxVersion: 'pi_server (exemple)', running: { id: 'steam:1', appName: 'Exemple' },
     hands: [{ state: 'ok', text: 'Vue par les caméras' }, { state: 'lost', text: 'Hors champ : arme gardée en main' }],
@@ -323,6 +334,7 @@ function mock(msg) {
   setTimeout(() => {
     if (msg.cmd === 'ready') onMessage(s);
     else if (msg.cmd === 'theme') { s.theme = msg.value; onMessage(s); }
+    else if (msg.cmd === 'shortcut') { s[msg.where === 'desktop' ? 'desktop' : 'startMenu'] = msg.value; onMessage(s); }
     else if (msg.cmd === 'getGame' || msg.cmd === 'set') {
       if (msg.cmd === 'set') settings[msg.key] = msg.value;
       const g = s.games.find((x) => x.id === msg.id);
