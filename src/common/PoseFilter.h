@@ -90,6 +90,56 @@ struct FilterSettings {
 	double rigidWindowS = 1.5;     // ... sur les mesures (mains toutes deux suivies) de la dernière seconde et demie
 	// Stabilisation de l'orientation (visée) : 0 = désactivée, 100 = maximum.
 	double orientSmoothing = 50;
+	// Bouton grip des manettes Pimax qui se relâche par instants (la main s'ouvre et se referme) :
+	// un relâchement plus court que gripHoldMs est ignoré.
+	bool gripFix = false;
+	double gripHoldMs = 120;
+};
+
+// Anti-rebond d'un bouton grip (une action du jeu, pour une main). Le grip est « serré » au-dessus de kPress ;
+// tant qu'il est serré, la valeur rendue au jeu est la plus forte vue depuis l'appui, et un passage sous
+// kPress n'est accepté comme relâchement qu'après holdMs sans remonter. Le relâchement réel arrive donc
+// holdMs plus tard ; les relâchements parasites plus courts disparaissent.
+class GripFilter {
+public:
+	static constexpr double kPress = 0.5;
+	struct Stats {
+		uint64_t masked = 0;       // relâchements parasites masqués
+		double maskedMaxMs = 0;    // le plus long
+		uint64_t shortReleases = 0; // relâchements acceptés puis grip resserré moins de 0,4 s après : délai peut-être trop court
+	};
+	// t en secondes, raw entre 0 et 1 (1 pour un booléen appuyé). Renvoie la valeur à rendre au jeu.
+	double apply(double t, double raw, double holdMs, Stats& st) {
+		const bool high = raw >= kPress;
+		if (high) {
+			if (pressed_ && dipStart_ >= 0) { // remonté pendant le délai : relâchement parasite
+				st.masked++;
+				st.maskedMaxMs = std::max(st.maskedMaxMs, (t - dipStart_) * 1000.0);
+			} else if (!pressed_ && releasedAt_ >= 0 && t - releasedAt_ < 0.4) {
+				st.shortReleases++;
+			}
+			pressed_ = true;
+			dipStart_ = -1;
+			peak_ = std::max(peak_, raw);
+			return peak_;
+		}
+		if (pressed_) {
+			if (dipStart_ < 0) dipStart_ = t;
+			if ((t - dipStart_) * 1000.0 < holdMs) return peak_;
+			pressed_ = false; // relâchement confirmé
+			releasedAt_ = t;
+			dipStart_ = -1;
+			peak_ = 0;
+		}
+		return raw;
+	}
+	void reset() { pressed_ = false; dipStart_ = -1; peak_ = 0; releasedAt_ = -1; }
+	bool pressed() const { return pressed_; }
+private:
+	bool pressed_ = false;
+	double dipStart_ = -1;
+	double peak_ = 0;
+	double releasedAt_ = -1;
 };
 
 enum CoupleMode : int { CoupleAuto = 0, CoupleAlways = 1, CoupleNever = 2, CoupleGrips = 3 };

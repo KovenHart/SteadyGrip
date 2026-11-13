@@ -180,7 +180,8 @@ std::string SettingsJson(int32_t preset, const FilterSettings& s) {
 		",\"twoHands\":" + JsonBool(s.coupleMode == CoupleGrips) + ",\"armModel\":" + JsonBool(s.armModel) +
 		",\"stillTauMs\":" + JsonNum(s.stillTauMs) + ",\"movingTauMs\":" + JsonNum(s.movingTauMs) +
 		",\"teleportBlendMs\":" + JsonNum(s.teleportBlendMs) + ",\"orientSmoothing\":" + JsonNum(s.orientSmoothing) +
-		",\"maxLostDriftCm\":" + JsonNum(std::round(s.maxLostDriftM * 100)) + ",\"maxReachCm\":" + JsonNum(std::round(s.maxReachM * 100)) + "}";
+		",\"maxLostDriftCm\":" + JsonNum(std::round(s.maxLostDriftM * 100)) + ",\"maxReachCm\":" + JsonNum(std::round(s.maxReachM * 100)) +
+		",\"gripFix\":" + JsonBool(s.gripFix) + ",\"gripHoldMs\":" + JsonNum(std::round(s.gripHoldMs)) + "}";
 }
 
 std::string Summary(const std::string& id) {
@@ -188,9 +189,10 @@ std::string Summary(const std::string& id) {
 	int32_t p;
 	FilterSettings s;
 	LoadFor(id, p, s);
-	if (!s.enabled) return "Désactivée";
+	if (!s.enabled) return s.gripFix ? "Désactivée · grip corrigé" : "Désactivée";
 	std::string t = LevelName(LevelOf(p));
 	if (s.coupleMode == CoupleGrips) t += " · armes à deux mains";
+	if (s.gripFix) t += " · grip corrigé";
 	return t;
 }
 
@@ -369,11 +371,15 @@ void ApplySetting(const std::string& id, const std::string& key, const JsonValue
 		s.armModel = keep.armModel;
 		s.maxLostDriftM = keep.maxLostDriftM;
 		s.maxReachM = keep.maxReachM;
+		s.gripFix = keep.gripFix;
+		s.gripHoldMs = keep.gripHoldMs;
 		s.enabled = level != PresetOff;
 		p = level;
 	} else if (key == "lossGuard") s.lossGuard = v.truthy();
 	else if (key == "twoHands") s.coupleMode = v.truthy() ? CoupleGrips : CoupleNever;
 	else if (key == "armModel") s.armModel = v.truthy();
+	else if (key == "gripFix") s.gripFix = v.truthy();
+	else if (key == "gripHoldMs") s.gripHoldMs = std::clamp(v.num(), 30.0, 400.0);
 	else if (key == "maxLostDriftCm") s.maxLostDriftM = std::clamp(v.num(), 5.0, 60.0) / 100.0;
 	else if (key == "maxReachCm") s.maxReachM = std::clamp(v.num(), 50.0, 120.0) / 100.0;
 	else {

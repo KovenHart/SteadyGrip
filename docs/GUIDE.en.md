@@ -6,7 +6,7 @@ Everything SteadyGrip does, and what to know when something goes wrong. To insta
 
 ## Why it doesn't get in the game's way
 
-- The layer uses OpenXR's official mechanism (a DLL declared in the registry, inserted by the loader between the game and the runtime). It injects nothing into the game and touches neither the image nor the headset: it only changes the controller poses the game asks for (`xrLocateSpace`, `xrLocateSpaces`), and reads the grip buttons' state along the way.
+- The layer uses OpenXR's official mechanism (a DLL declared in the registry, inserted by the loader between the game and the runtime). It injects nothing into the game and touches neither the image nor the headset: it only changes the controller poses the game asks for (`xrLocateSpace`, `xrLocateSpaces`), and reads the grip buttons' state along the way (it only corrects it when "Grip qui lâche tout seul" is on for that game).
 - It only does light math on positions: no measurable cost on frame rate.
 - The loss signal comes from the app: it reads the Pimax service's log in memory, without writing anything. Nothing is injected into Pimax and no Pimax file is modified.
 - Without the app, or if Pimax changes its log format, the layer keeps smoothing, just without the loss signal.
@@ -96,6 +96,15 @@ For each loss, the layer records where the hand was as seen from the headset (ca
 - **Extending the hand's momentum during short losses**: during "lost", Pimax already integrates the IMU (1–2 cm median gap at recovery); during reinitialization, Pimax freezes the pose with zero velocity. The current arm model remains best (7 cm median gap versus 16–17 cm for the alternatives).
 - **Predicting orientation to offset smoothing lag**: prediction reinjects the jitter; the gain is at most 0.06° at equal jitter.
 - **Checking Pimax's state against optical corrections** (0.5, removed in 0.5.1): in game, the grip pose is offset from the controller's center, so wrist rotation looked like corrections and almost every reinitialization was wrongly ignored.
+
+## Grip that lets go by itself
+
+With Pimax's OpenXR runtime, the grip button sometimes releases for a fraction of a second while you squeeze it: the hand opens and closes, and the weapon may drop (Gunman Contract, for example). For these games, turn on **"Grip qui lâche tout seul"** on the game's page.
+
+- SteadyGrip then corrects the game's actions bound to the grip (`/input/squeeze`): a release shorter than the delay (120 ms by default, 30 to 400 ms in Réglages avancés › Bouton grip) is ignored, and the value returned to the game stays that of the squeezed grip.
+- A real release takes effect after that delay.
+- At each summary, the log shows how many spurious releases were masked and the longest one. If it reports "relâchements suivis d'un nouvel appui en moins de 0,4 s" (releases followed by a new press within 0.4 s), increase the delay a little.
+- Off by default: in games where the grip works fine, there is nothing to correct.
 
 ## Comparing settings during play
 

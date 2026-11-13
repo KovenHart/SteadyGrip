@@ -117,6 +117,7 @@ function renderGame() {
         '<section class="panel" style="padding-top:6px;padding-bottom:6px">' +
           toggle('lossGuard', 'Garder l\'arme en main hors du champ', 'Sans ça, l\'arme peut partir au sol ou se téléporter quand les caméras perdent la manette.') +
           toggle('twoHands', 'Armes à deux mains', 'Quand tes deux grips sont serrés, la main perdue suit l\'autre main.') +
+          toggle('gripFix', 'Grip qui lâche tout seul', 'Pour les jeux où la main s\'ouvre et se referme toute seule et où l\'arme tombe : SteadyGrip ignore les relâchements très courts du grip.') +
         '</section>' +
         '<button type="button" class="link" style="align-self:flex-start" data-action="advanced">Réglages avancés' + (isDefault ? '' : ' pour ce jeu') + ' ›</button>' +
       '</div>' + liveHtml() +
@@ -133,7 +134,9 @@ const ADV = [
     { key: 'teleportBlendMs', label: 'Retour dans le champ', unit: ' ms', min: 0, max: 300, left: 'Immédiat', right: 'En douceur', help: 'Temps pour rejoindre la vraie position quand les caméras retrouvent la manette.' } ] },
   { title: 'Manette hors du champ', text: 'Quand les caméras ne voient plus la manette, SteadyGrip la garde dans des limites réalistes.', items: [
     { key: 'maxLostDriftCm', label: 'Déplacement maximal', unit: ' cm', min: 5, max: 60, left: '5 cm', right: '60 cm', help: 'Distance que l\'arme peut parcourir pendant une perte.' },
-    { key: 'maxReachCm', label: 'Longueur du bras', unit: ' cm', min: 50, max: 120, left: '50 cm', right: '120 cm', help: 'L\'arme ne s\'éloigne jamais plus de ton corps.' } ] }
+    { key: 'maxReachCm', label: 'Longueur du bras', unit: ' cm', min: 50, max: 120, left: '50 cm', right: '120 cm', help: 'L\'arme ne s\'éloigne jamais plus de ton corps.' } ] },
+  { title: 'Bouton grip', text: 'Avec « Grip qui lâche tout seul », un relâchement du grip plus court que ce délai est ignoré. Quand tu lâches vraiment, la main s\'ouvre avec ce délai de retard.', items: [
+    { key: 'gripHoldMs', label: 'Relâchements ignorés jusqu\'à', unit: ' ms', min: 30, max: 400, left: 'Lâcher immédiat', right: 'Grip très sûr', help: '120 ms suffit en général. Si l\'arme tombe encore, monte un peu.' } ] }
 ];
 
 function renderAdvanced() {
@@ -330,7 +333,7 @@ function mock(msg) {
     tremorPct: 73, caught: 6, defaultSummary: 'Équilibrée',
     games: [{ id: 'steam:1', name: 'Jeu d\'exemple', image: '', own: true, summary: 'Très stable · armes à deux mains', running: true }]
   });
-  const settings = mock.set || (mock.set = { level: 3, lossGuard: true, twoHands: true, armModel: true, stillTauMs: 100, movingTauMs: 30, teleportBlendMs: 140, orientSmoothing: 75, maxLostDriftCm: 30, maxReachCm: 85 });
+  const settings = mock.set || (mock.set = { level: 3, lossGuard: true, twoHands: true, armModel: true, stillTauMs: 100, movingTauMs: 30, teleportBlendMs: 140, orientSmoothing: 75, maxLostDriftCm: 30, maxReachCm: 85, gripFix: false, gripHoldMs: 120 });
   setTimeout(() => {
     if (msg.cmd === 'ready') onMessage(s);
     else if (msg.cmd === 'theme') { s.theme = msg.value; onMessage(s); }

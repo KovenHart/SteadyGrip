@@ -4,6 +4,11 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.1
+
+- **Grip that lets go by itself** (new switch on a game's page, off by default): with Pimax's OpenXR runtime, the grip button sometimes releases for a fraction of a second. The hand opens and closes, and in Gunman Contract, for example, the weapon drops. SteadyGrip now ignores releases shorter than 120 ms (adjustable from 30 to 400 ms in the advanced settings). A real release takes effect after that delay.
+- At each summary, the log counts the masked spurious releases and their longest duration, to tune the delay.
+
 ## 0.6.0
 
 - **New interface**, designed for people who know nothing about the subject. A "My games" page with cover art, and a banner that says in one sentence whether everything is ready, or what to do. On a game's page: one main choice, "Aiming stability" (Off, Responsive, Balanced, Very stable), and two explained switches. During play, it shows the state of each hand and how much jitter was removed. Fine-tuning sliders stay in "Advanced settings".

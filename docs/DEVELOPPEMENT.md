@@ -46,7 +46,7 @@ L'interface peut s'ouvrir dans un navigateur (`ui/index.html`) : sans l'applicat
 
 | Programme | Ce qu'il vérifie |
 |---|---|
-| `test_lossguard.exe` | maintien de la manette pendant une perte, modèle de bras, retour proportionné, liaison par les grips, angles de la carte des pertes, stabilisation de l'orientation |
+| `test_lossguard.exe` | maintien de la manette pendant une perte, modèle de bras, retour proportionné, liaison par les grips, angles de la carte des pertes, stabilisation de l'orientation, anti-rebond du grip |
 | `test_app.exe` | messages JSON entre l'interface et l'application, lecture des fichiers de Steam |
 | `bench.exe`, `orient_eval.exe`, `motion_eval.exe` (dans `tests/`) | rejouent une session TrackProbe (CSV) pour mesurer le lissage |
 

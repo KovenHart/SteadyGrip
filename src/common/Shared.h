@@ -17,9 +17,9 @@
 namespace sg {
 
 constexpr uint32_t kSharedMagic = 0x53475250; // 'SGRP'
-constexpr uint32_t kSharedVersion = 8;
-constexpr wchar_t kSharedName[] = L"Local\\SteadyGripShared_v8";
-constexpr char kVersion[] = "0.6";
+constexpr uint32_t kSharedVersion = 9;
+constexpr wchar_t kSharedName[] = L"Local\\SteadyGripShared_v9";
+constexpr char kVersion[] = "0.6.1";
 
 enum Preset : int32_t { PresetOff = 0, PresetLight = 1, PresetMedium = 2, PresetStrong = 3, PresetCustom = 4 };
 
@@ -182,6 +182,8 @@ inline void LoadSettings(int32_t& preset, FilterSettings& s, const wchar_t* sect
 	s.maxLostDriftM = std::clamp(IniGet(section, L"DeriveMaxCm", s.maxLostDriftM * 100) / 100.0, 0.05, 0.60);
 	s.maxReachM = std::clamp(IniGet(section, L"PorteeBrasCm", s.maxReachM * 100) / 100.0, 0.50, 1.20);
 	s.armModel = IniGet(section, L"ModeleBras", 1) != 0;
+	s.gripFix = IniGet(section, L"CorrigerGrip", 0) != 0;
+	s.gripHoldMs = std::clamp(IniGet(section, L"GripMaintienMs", s.gripHoldMs), 30.0, 400.0);
 }
 
 // Réglages d'un jeu : son profil s'il en a un, sinon les réglages généraux.
@@ -242,6 +244,8 @@ inline void SaveSettings(int32_t preset, const FilterSettings& s, const wchar_t*
 	IniSet(section, L"PorteeBrasCm", std::round(s.maxReachM * 100));
 	IniSet(section, L"ModeleBras", s.armModel ? 1 : 0);
 	IniSet(section, L"StabilisationOrientation", std::round(s.orientSmoothing));
+	IniSet(section, L"CorrigerGrip", s.gripFix ? 1 : 0);
+	IniSet(section, L"GripMaintienMs", std::round(s.gripHoldMs));
 }
 
 // Ouvre (ou crée) la mémoire partagée. Accessible aux processus élevés comme non élevés.

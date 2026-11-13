@@ -254,6 +254,46 @@ int main() {
 		check(std::fabs(el + 45) < 1e-6 && LossZones::El(el) == 2 && LossZones::Az(az) == 2 && LossZones::Dist(d) == 1, "main devant, en bas à 45°");
 	}
 
+	std::printf("9. Grip qui se relâche par instants (anti-rebond)\n");
+	{
+		GripFilter f;
+		GripFilter::Stats st;
+		const double dt = 1 / 72.0, hold = 120;
+		double t = 0, out = 0;
+		bool dropped = false;
+		// Grip serré à 0,9 pendant 3 s, avec un relâchement parasite (valeur 0) de 2 images toutes les 0,5 s.
+		for (int i = 0; i < 216; i++, t += dt) {
+			const double raw = (i % 36 == 10 || i % 36 == 11) ? 0.0 : 0.9;
+			out = f.apply(t, raw, hold, st);
+			if (out < GripFilter::kPress) dropped = true;
+		}
+		check(!dropped, "la main reste fermée malgré les relâchements parasites");
+		check(st.masked == 6 && st.maskedMaxMs < 40, "relâchements parasites comptés");
+		// Vrai relâchement : la main s'ouvre après le délai.
+		double openedAt = -1;
+		const double t0 = t;
+		for (int i = 0; i < 36; i++, t += dt) {
+			out = f.apply(t, 0.0, hold, st);
+			if (out < GripFilter::kPress && openedAt < 0) openedAt = t;
+		}
+		std::printf("     vrai relâchement : main ouverte après %.0f ms\n", (openedAt - t0) * 1000);
+		check(openedAt > 0 && openedAt - t0 >= 0.120 && openedAt - t0 < 0.140, "vrai relâchement accepté après 120 ms");
+		// Valeur analogique qui oscille autour de 0,5 : la valeur rendue reste la plus forte vue.
+		GripFilter g;
+		GripFilter::Stats st2;
+		double minOut = 1;
+		for (int i = 0; i < 100; i++) minOut = std::min(minOut, g.apply(i * dt, i % 2 ? 0.45 : 0.62, hold, st2));
+		check(minOut >= 0.62 - 1e-9, "grip analogique qui oscille autour du seuil : valeur stable");
+		// Nouvel appui juste après un vrai relâchement : signalé (délai peut-être trop court).
+		GripFilter h;
+		GripFilter::Stats st3;
+		t = 0;
+		for (int i = 0; i < 10; i++, t += dt) h.apply(t, 1.0, hold, st3);
+		for (int i = 0; i < 15; i++, t += dt) h.apply(t, 0.0, hold, st3);   // 208 ms : relâchement accepté
+		for (int i = 0; i < 5; i++, t += dt) h.apply(t, 1.0, hold, st3);
+		check(st3.shortReleases == 1 && st3.masked == 0, "relâchement suivi d'un appui rapide signalé dans le journal");
+	}
+
 	std::printf("%s\n", fails ? "ÉCHEC" : "OK");
 	return fails;
 }

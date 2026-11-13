@@ -6,7 +6,7 @@ Tout ce que fait SteadyGrip, et ce qu'il faut savoir en cas de problème. Pour l
 
 ## Pourquoi ça ne gêne pas le jeu
 
-- La couche passe par le mécanisme officiel d'OpenXR (une DLL déclarée dans le registre, insérée par le chargeur entre le jeu et le runtime). Elle n'injecte rien dans le jeu et ne touche ni à l'image ni au casque : elle modifie seulement la pose des manettes que le jeu demande (`xrLocateSpace`, `xrLocateSpaces`), et lit au passage l'état des boutons grip.
+- La couche passe par le mécanisme officiel d'OpenXR (une DLL déclarée dans le registre, insérée par le chargeur entre le jeu et le runtime). Elle n'injecte rien dans le jeu et ne touche ni à l'image ni au casque : elle modifie seulement la pose des manettes que le jeu demande (`xrLocateSpace`, `xrLocateSpaces`), et lit au passage l'état des boutons grip (qu'elle ne corrige que si « Grip qui lâche tout seul » est activé pour le jeu).
 - Elle ne fait que des calculs légers sur des positions : aucun coût mesurable sur les images par seconde.
 - Le signal de perte vient de l'application : elle lit en mémoire, sans rien écrire, le journal du service Pimax. Rien n'est injecté chez Pimax et aucun fichier de Pimax n'est modifié.
 - Sans l'application, ou si Pimax change le format de son journal, la couche continue à lisser, simplement sans le signal de perte.
@@ -119,6 +119,15 @@ Si l'application compagnon n'est pas lancée, ou pas en administrateur, la couch
 - **Compenser le retard de la stabilisation de l'orientation par une prédiction.** Que la vitesse soit lissée ou prise au gyroscope, la prédiction réinjecte le tremblement. À tremblement égal, le gain est d'au plus 0,06°, et les vitesses angulaires du runtime prédisent moins bien que les orientations elles-mêmes. Le retard actuel, moins de 1° en moyenne, est le prix de la stabilité.
 
 - **Contrôler l'état Pimax par les recalages (0.5, retiré en 0.5.1).** L'idée : ignorer une « perte » pendant laquelle la pose reçoit encore des recalages. Sur la pose brute de TrackProbe, il n'y en a aucun pendant les réinitialisations. Mais en jeu, la pose de la poignée est décalée du centre de la manette : quand on tourne le poignet, sa position bouge alors que Pimax a figé la position. Ces mouvements passaient pour des recalages, si bien que presque toutes les réinitialisations étaient ignorées puis reprises (165 fois sur une session de 10 minutes). La main alternait entre la pose figée de Pimax et le modèle de bras, d'où des dérives visibles.
+
+## Grip qui lâche tout seul
+
+Avec le runtime OpenXR de Pimax, le bouton grip se relâche parfois une fraction de seconde alors qu'on le serre : la main s'ouvre et se referme, et l'arme peut tomber (Gunman Contract, par exemple). Pour ces jeux, activez **« Grip qui lâche tout seul »** sur la page du jeu.
+
+- SteadyGrip corrige alors les actions du jeu liées au grip (`/input/squeeze`) : un relâchement plus court que le délai (120 ms par défaut, de 30 à 400 ms dans Réglages avancés › Bouton grip) est ignoré, et la valeur rendue au jeu reste celle du grip serré.
+- Un vrai relâchement est pris en compte avec ce délai de retard.
+- Le journal indique, à chaque bilan, le nombre de relâchements parasites masqués et le plus long. S'il signale des « relâchements suivis d'un nouvel appui en moins de 0,4 s », augmentez un peu le délai.
+- Désactivé par défaut : dans les jeux où le grip fonctionne bien, il n'y a rien à corriger.
 
 ## Comparer des réglages pendant une partie
 

@@ -66,6 +66,7 @@ PFN_xrSuggestInteractionProfileBindings g_xrSuggestInteractionProfileBindings = 
 PFN_xrCreateReferenceSpace g_xrCreateReferenceSpace = nullptr;
 PFN_xrGetActionStateFloat g_xrGetActionStateFloat = nullptr;
 PFN_xrGetActionStateBoolean g_xrGetActionStateBoolean = nullptr;
+PFN_xrSyncActions g_xrSyncActions = nullptr;
 std::string g_appName = "?";
 
 // Actions booléennes ou analogiques du jeu : on repère celles liées au bouton grip (« squeeze »).
@@ -80,6 +81,21 @@ struct GripState {
 };
 GripState g_grip[2];
 std::map<XrPath, int> g_pathHand;   // cache sous-chemin -> main
+
+// Correction du grip qui se relâche par instants : un filtre par action et par sous-chemin demandé.
+// L'état corrigé est calculé une fois par xrSyncActions, pour que « changé depuis la dernière
+// synchronisation » reste cohérent même si le jeu lit l'action plusieurs fois.
+uint64_t g_syncCount = 0;
+struct GripFix {
+	GripFilter filter;
+	uint64_t evalSync = UINT64_MAX;
+	double out = 0;
+	bool changed = false;
+	XrTime lastChange = 0;
+};
+std::map<std::pair<XrAction, XrPath>, GripFix> g_gripFix;
+GripFilter::Stats g_gripStats[3];   // gauche, droite, main inconnue (statistiques de la période)
+bool g_gripFixLogged = false;
 
 struct ActionInfo {
 	std::string name;
@@ -267,13 +283,15 @@ void WriteLossCsv(const StreamState& st, double durMs, double gapCm) {
 std::string SettingsDesc(const FilterSettings& s, int32_t preset) {
 	static const char* presets[] = { "Désactivé", "Léger", "Moyen", "Fort", "Personnalisé" };
 	static const char* couple[] = { "automatique", "toujours", "jamais", "deux grips serrés" };
-	char b[400];
+	char grip[32] = "non";
+	if (s.gripFix) snprintf(grip, sizeof(grip), "%.0f ms", s.gripHoldMs);
+	char b[480];
 	snprintf(b, sizeof(b),
 		"préréglage %s, actif %d, lissage à l'arrêt %.0f ms, en mouvement %.0f ms, téléportations %.0f ms, orientation %.0f, "
-		"contenir les pertes %d, modèle de bras %d, dérive max %.0f cm, portée %.0f cm, liaison des mains %s",
+		"contenir les pertes %d, modèle de bras %d, dérive max %.0f cm, portée %.0f cm, liaison des mains %s, correction du grip %s",
 		preset >= 0 && preset <= 4 ? presets[preset] : "?", s.enabled ? 1 : 0, s.stillTauMs, s.movingTauMs, s.teleportBlendMs, s.orientSmoothing,
 		s.lossGuard ? 1 : 0, s.armModel ? 1 : 0, s.maxLostDriftM * 100, s.maxReachM * 100,
-		s.coupleMode >= 0 && s.coupleMode <= 3 ? couple[s.coupleMode] : "?");
+		s.coupleMode >= 0 && s.coupleMode <= 3 ? couple[s.coupleMode] : "?", grip);
 	return b;
 }
 
@@ -302,6 +320,16 @@ void EndPeriod(const char* why) {
 			const std::string zones = ZonesText(p.zones);
 			if (!zones.empty()) Log("    [%s] carte des pertes (pertes par minute passée dans la zone) :%s\n", hand == 0 ? "gauche" : "droite", zones.c_str());
 		}
+		if (g_settings.gripFix) {
+			static const char* names[] = { "gauche", "droite", "main non précisée" };
+			for (int i = 0; i < 3; i++) {
+				const auto& gs = g_gripStats[i];
+				if (!gs.masked && !gs.shortReleases) continue;
+				Log("    [%s] grip : %llu relâchements parasites masqués (%.1f par minute, le plus long %.0f ms) ; "
+					"%llu relâchements suivis d'un nouvel appui en moins de 0,4 s\n", names[i], (unsigned long long)gs.masked,
+					gs.masked * 60.0 / dur, gs.maskedMaxMs, (unsigned long long)gs.shortReleases);
+			}
+		}
 	}
 	// Fin de session ou de partie : carte des pertes de toute la session.
 	if (std::strcmp(why, "changement de réglages") != 0) {
@@ -320,6 +348,7 @@ void EndPeriod(const char* why) {
 		for (auto& [key, st] : g_streams) st.sessionZones = StreamState::Zones{}; // notée une seule fois
 	}
 	for (auto& [key, st] : g_streams) st.period = StreamState::Period{};
+	for (auto& gs : g_gripStats) gs = GripFilter::Stats{};
 	g_periodStart = now;
 	g_periodDesc = SettingsDesc(g_settings, g_preset);
 }
@@ -752,19 +781,24 @@ XrResult XRAPI_CALL SG_xrCreateActionSpace(XrSession session, const XrActionSpac
 }
 
 // État d'un bouton grip demandé par le jeu : on le note au passage (lecture seule). Appelé sous g_mutex.
-void RecordGrip(XrAction action, XrPath subPath, bool active, double value) {
-	auto it = g_inputActions.find(action);
-	if (it == g_inputActions.end() || !it->second.gripHands || !active) return;
+// Main d'une lecture de grip : par le sous-chemin demandé, sinon par la seule main liée à l'action ; -1 si inconnue.
+int GripHand(const InputAction& a, XrPath subPath) {
 	int hand = -1;
 	if (subPath != XR_NULL_PATH) {
 		auto c = g_pathHand.find(subPath);
 		if (c == g_pathHand.end()) c = g_pathHand.emplace(subPath, HandFromPath(PathToString(subPath))).first;
 		hand = c->second;
-	} else if (it->second.gripHands == 1 || it->second.gripHands == 2) {
-		hand = it->second.gripHands == 1 ? 0 : 1;
+	} else if (a.gripHands == 1 || a.gripHands == 2) {
+		hand = a.gripHands == 1 ? 0 : 1;
 	}
+	return hand >= 0 && (a.gripHands & (1 << hand)) ? hand : -1;
+}
+
+void RecordGrip(XrAction action, XrPath subPath, bool active, double value) {
+	auto it = g_inputActions.find(action);
+	if (it == g_inputActions.end() || !it->second.gripHands || !active) return;
+	const int hand = GripHand(it->second, subPath);
 	if (hand < 0) return; // action commune aux deux mains, demandée sans préciser la main : impossible de savoir laquelle
-	if (!(it->second.gripHands & (1 << hand))) return;
 	GripState& g = g_grip[hand];
 	if (!g.seen) Log("Bouton grip lu pendant le jeu : main %s (action %s)\n", hand == 0 ? "gauche" : "droite", it->second.name.c_str());
 	// Plusieurs actions peuvent être liées au même grip : on garde la plus récente.
@@ -773,10 +807,60 @@ void RecordGrip(XrAction action, XrPath subPath, bool active, double value) {
 	g.seen = true;
 }
 
+XrResult XRAPI_CALL SG_xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) {
+	const XrResult r = g_xrSyncActions(session, syncInfo);
+	if (XR_SUCCEEDED(r)) {
+		std::lock_guard<std::mutex> lock(g_mutex);
+		g_syncCount++;
+	}
+	return r;
+}
+
+// Correction du grip (si activée et si l'action est liée à un grip). Appelé sous g_mutex.
+// Renvoie vrai si l'état rendu au jeu doit être remplacé par value / changed / lastChange.
+bool FixGrip(XrAction action, XrPath subPath, bool active, double& value, XrBool32& changed, XrTime& lastChange) {
+	if (!g_settings.gripFix) {
+		if (!g_gripFix.empty()) g_gripFix.clear(); // désactivée en cours de partie : on repart de zéro
+		return false;
+	}
+	auto it = g_inputActions.find(action);
+	if (it == g_inputActions.end() || !it->second.gripHands) return false;
+	GripFix& g = g_gripFix[{ action, subPath }];
+	if (!active) {
+		g.filter.reset();
+		g.out = 0;
+		return false;
+	}
+	if (!g_gripFixLogged) {
+		g_gripFixLogged = true;
+		Log("Correction du grip active (relâchements de moins de %.0f ms ignorés), action %s\n", g_settings.gripHoldMs, it->second.name.c_str());
+	}
+	if (g.evalSync != g_syncCount) {
+		const double prev = g.out;
+		const int hand = GripHand(it->second, subPath);
+		g.out = g.filter.apply(NowSeconds(), value, g_settings.gripHoldMs, g_gripStats[hand < 0 ? 2 : hand]);
+		g.changed = g.out != prev;
+		if (lastChange > g.lastChange) g.lastChange = lastChange;
+		g.evalSync = g_syncCount;
+	}
+	value = g.out;
+	changed = g.changed ? XR_TRUE : XR_FALSE;
+	lastChange = g.lastChange;
+	return true;
+}
+
 XrResult XRAPI_CALL SG_xrGetActionStateFloat(XrSession session, const XrActionStateGetInfo* getInfo, XrActionStateFloat* state) {
 	const XrResult r = g_xrGetActionStateFloat(session, getInfo, state);
 	if (XR_SUCCEEDED(r) && getInfo && state) {
 		std::lock_guard<std::mutex> lock(g_mutex);
+		double v = state->currentState;
+		XrBool32 changed = state->changedSinceLastSync;
+		XrTime last = state->lastChangeTime;
+		if (FixGrip(getInfo->action, getInfo->subactionPath, state->isActive != XR_FALSE, v, changed, last)) {
+			state->currentState = (float)v;
+			state->changedSinceLastSync = changed;
+			state->lastChangeTime = last;
+		}
 		RecordGrip(getInfo->action, getInfo->subactionPath, state->isActive != XR_FALSE, state->currentState);
 	}
 	return r;
@@ -786,6 +870,14 @@ XrResult XRAPI_CALL SG_xrGetActionStateBoolean(XrSession session, const XrAction
 	const XrResult r = g_xrGetActionStateBoolean(session, getInfo, state);
 	if (XR_SUCCEEDED(r) && getInfo && state) {
 		std::lock_guard<std::mutex> lock(g_mutex);
+		double v = state->currentState ? 1.0 : 0.0;
+		XrBool32 changed = state->changedSinceLastSync;
+		XrTime last = state->lastChangeTime;
+		if (FixGrip(getInfo->action, getInfo->subactionPath, state->isActive != XR_FALSE, v, changed, last)) {
+			state->currentState = v >= GripFilter::kPress ? XR_TRUE : XR_FALSE;
+			state->changedSinceLastSync = changed;
+			state->lastChangeTime = last;
+		}
 		RecordGrip(getInfo->action, getInfo->subactionPath, state->isActive != XR_FALSE, state->currentState ? 1.0 : 0.0);
 	}
 	return r;
@@ -917,6 +1009,8 @@ XrResult XRAPI_CALL SG_xrDestroyInstance(XrInstance instance) {
 		g_inputActions.clear();
 		g_pathHand.clear();
 		for (auto& g : g_grip) g = GripState{};
+		g_gripFix.clear();
+		g_gripFixLogged = false;
 		g_streams.clear();
 		g_viewSpaces.clear();
 	}
@@ -940,6 +1034,7 @@ XrResult XRAPI_CALL SG_xrGetInstanceProcAddr(XrInstance instance, const char* na
 	else if (n == "xrLocateSpace") *function = (PFN_xrVoidFunction)SG_xrLocateSpace;
 	else if (n == "xrGetActionStateFloat" && g_xrGetActionStateFloat) *function = (PFN_xrVoidFunction)SG_xrGetActionStateFloat;
 	else if (n == "xrGetActionStateBoolean" && g_xrGetActionStateBoolean) *function = (PFN_xrVoidFunction)SG_xrGetActionStateBoolean;
+	else if (n == "xrSyncActions" && g_xrSyncActions) *function = (PFN_xrVoidFunction)SG_xrSyncActions;
 	else if (n == "xrLocateSpaces" && g_xrLocateSpaces) *function = (PFN_xrVoidFunction)SG_xrLocateSpaces;
 	else if (n == "xrLocateSpacesKHR" && g_xrLocateSpacesKHR) *function = (PFN_xrVoidFunction)SG_xrLocateSpacesKHR;
 	return r;
@@ -975,6 +1070,7 @@ XrResult XRAPI_CALL SG_xrCreateApiLayerInstance(const XrInstanceCreateInfo* info
 	Resolve(g_instance, "xrCreateReferenceSpace", g_xrCreateReferenceSpace);
 	Resolve(g_instance, "xrGetActionStateFloat", g_xrGetActionStateFloat);
 	Resolve(g_instance, "xrGetActionStateBoolean", g_xrGetActionStateBoolean);
+	Resolve(g_instance, "xrSyncActions", g_xrSyncActions);
 
 	g_sharedOk = g_shared.open();
 	const char* app = info && info->applicationInfo.applicationName[0] ? info->applicationInfo.applicationName : "?";

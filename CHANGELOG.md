@@ -4,6 +4,11 @@
 
 Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
+## 0.6.1
+
+- **Grip qui lâche tout seul** (nouvel interrupteur sur la page d'un jeu, désactivé par défaut) : avec le runtime OpenXR de Pimax, le bouton grip se relâche parfois une fraction de seconde. La main s'ouvre et se referme, et dans Gunman Contract, par exemple, l'arme tombe. SteadyGrip ignore maintenant les relâchements de moins de 120 ms (réglable de 30 à 400 ms dans les réglages avancés). Un vrai relâchement est pris en compte avec ce délai.
+- Le journal compte, à chaque bilan, les relâchements parasites masqués et leur durée maximale, pour ajuster le délai.
+
 ## 0.6.0
 
 - **Nouvelle interface**, pensée pour quelqu'un qui n'y connaît rien. Une page « Mes jeux » avec les jaquettes, et un bandeau qui dit en une phrase si tout est prêt, ou ce qu'il faut faire. Sur la page d'un jeu : un seul choix, « Stabilité de la visée » (Désactivée, Réactive, Équilibrée, Très stable), et deux interrupteurs expliqués. Pendant la partie, elle montre l'état de chaque main et le tremblement évité. Les curseurs fins restent dans « Réglages avancés ».
