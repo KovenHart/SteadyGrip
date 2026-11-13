@@ -26,11 +26,11 @@ exit /b %RC%
 :main
 where cmake >nul 2>&1
 if not errorlevel 1 goto :hascmake
-rem CMake fourni avec Visual Studio 2022
+rem CMake fourni avec Visual Studio (le plus recent installe)
 for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do set "VSDIR=%%i"
 if defined VSDIR set "PATH=%VSDIR%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;%PATH%"
 :hascmake
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 || exit /b 1
+cmake -S . -B build -A x64 || exit /b 1
 cmake --build build --config Release || exit /b 2
 build\bin\Release\test_lossguard.exe || exit /b 3
 build\bin\Release\test_app.exe || exit /b 4

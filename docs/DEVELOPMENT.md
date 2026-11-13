@@ -16,7 +16,7 @@ Building from source, packaging and publishing, code layout. To simply use Stead
 ## Requirements
 
 - Windows 10 or 11, 64-bit.
-- Visual Studio 2022 with **"Desktop development with C++"** (CMake included), and Git.
+- Visual Studio 2022 or newer with **"Desktop development with C++"** (CMake included), and Git.
 - An Internet connection on first configure: CMake downloads the OpenXR headers (GitHub) and the WebView2 SDK (NuGet package `Microsoft.Web.WebView2`, headers and static loader).
 
 ## Building
@@ -34,7 +34,7 @@ dist\
 By hand:
 
 ```bat
-cmake -B build -G "Visual Studio 17 2022" -A x64
+cmake -B build -A x64
 cmake --build build --config Release
 ```
 

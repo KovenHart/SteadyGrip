@@ -16,7 +16,7 @@ Compiler depuis les sources, construire et publier le paquet, organisation du co
 ## Prérequis
 
 - Windows 10 ou 11, 64 bits.
-- Visual Studio 2022 avec la charge **« Développement Desktop en C++ »** (CMake est inclus), et Git.
+- Visual Studio 2022 ou plus récent, avec la charge **« Développement Desktop en C++ »** (CMake est inclus), et Git.
 - Une connexion Internet à la première configuration : CMake télécharge les en-têtes OpenXR (GitHub) et le SDK WebView2 (paquet NuGet `Microsoft.Web.WebView2`, en-têtes et chargeur statique).
 
 ## Compiler
@@ -34,7 +34,7 @@ dist\
 À la main :
 
 ```bat
-cmake -B build -G "Visual Studio 17 2022" -A x64
+cmake -B build -A x64
 cmake --build build --config Release
 ```
 
