@@ -54,7 +54,7 @@ The interface can be opened in a browser (`ui/index.html`): without the app, it 
 
 - The version number is in `VERSION` (and `kVersion` in `src/common/Shared.h`).
 - GitHub Actions (`.github/workflows/build.yml`) builds every push on Windows, runs the tests and attaches the `SteadyGrip-<version>-win64.zip` package to the run (Actions tab).
-- To publish: `git tag v<version>` then `git push origin v<version>`. The tag must match `VERSION`. A draft release with the package is created under Releases: review it, then "Publish release".
+- To publish: `git tag v<version>` then `git push origin v<version>`. The tag must match `VERSION`. A draft release with the package is created under Releases: review it, then "Publish release". Without the command line: Actions tab › "Compilation et paquet" › **Run workflow**, tick "Créer le brouillon de version": the tag is created on publishing.
 - The package contains `Installer.bat`, `Desinstaller.bat`, `LISEZ-MOI.txt`, `README-EN.txt` and the program in `programme\`. `Installer.bat` also works from the sources: it builds first with `build.bat`.
 
 ## Code layout

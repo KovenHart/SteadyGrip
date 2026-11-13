@@ -54,7 +54,7 @@ L'interface peut s'ouvrir dans un navigateur (`ui/index.html`) : sans l'applicat
 
 - Le numéro de version est dans `VERSION` (et `kVersion` dans `src/common/Shared.h`).
 - GitHub Actions (`.github/workflows/build.yml`) compile chaque envoi sur Windows, lance les tests et joint le paquet `SteadyGrip-<version>-win64.zip` au résultat (onglet Actions).
-- Pour publier : `git tag v<version>` puis `git push origin v<version>`. L'étiquette doit correspondre à `VERSION`. Un brouillon de version est créé dans Releases avec le paquet : le relire, puis « Publish release ».
+- Pour publier : `git tag v<version>` puis `git push origin v<version>`. L'étiquette doit correspondre à `VERSION`. Un brouillon de version est créé dans Releases avec le paquet : le relire, puis « Publish release ». Sans ligne de commande : onglet Actions › « Compilation et paquet » › **Run workflow**, cocher « Créer le brouillon de version » : l'étiquette est créée à la publication.
 - Le paquet contient `Installer.bat`, `Desinstaller.bat`, `LISEZ-MOI.txt`, `README-EN.txt` et le programme dans `programme\`. `Installer.bat` marche aussi depuis les sources : il compile d'abord avec `build.bat`.
 
 ## Organisation du code
