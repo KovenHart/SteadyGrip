@@ -6,6 +6,8 @@ Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
 ## 0.6.2
 
+- **Lissage en mouvement réparé pour les jeux Unity** (Gunman Contract, par exemple). Ces jeux demandent chaque position de manette deux fois : une fois pour préparer l'image suivante, puis de nouveau pour l'image en cours, avec des capteurs plus frais. La seconde réponse de Pimax différait un peu de la première, et cet écart passait tel quel dans l'image : le lissage en mouvement n'agissait plus, et pouvait même ajouter des à-coups. SteadyGrip absorbe maintenant cet écart comme un recalage ordinaire. En simulation de ce rythme, on passe de +87 % d'à-coups à −60 %. Les jeux qui ne demandent qu'une fois par image ne changent pas.
+- Le journal indique, toutes les 10 s, à quels instants le jeu demande la pose et combien de secondes demandes ont été corrigées. Les mesures d'à-coups et de tremblement portent sur la pose réellement affichée.
 - Délai par défaut de « Grip qui lâche tout seul » ramené de 120 à 60 ms : dans Gunman Contract, les relâchements parasites mesurés durent 29 ms au plus (32 masqués en deux parties, aucun plus long). Un vrai relâchement est donc pris en compte deux fois plus vite. Les jeux dont le délai a déjà été réglé gardent leur valeur.
 
 ## 0.6.1

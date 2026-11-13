@@ -6,6 +6,8 @@ What's new in each SteadyGrip version, most recent first.
 
 ## 0.6.2
 
+- **Motion smoothing fixed for Unity games** (Gunman Contract, for example). These games request each controller pose twice: once to prepare the next frame, then again for the current frame, with fresher sensor data. Pimax's second answer differed slightly from the first, and that difference went straight into the image: motion smoothing no longer worked, and could even add jerks. SteadyGrip now absorbs that difference like an ordinary correction. In a simulation of this request pattern, jerks go from +87 % to −60 %. Games that request once per frame are unchanged.
+- Every 10 s, the log shows when the game requests the pose and how many second requests were corrected. Jerk and jitter measurements now use the pose actually displayed.
 - Default delay of "Grip qui lâche tout seul" lowered from 120 to 60 ms: in Gunman Contract, the measured spurious releases last 29 ms at most (32 masked over two sessions, none longer). A real release now takes effect twice as fast. Games whose delay was already set keep their value.
 
 ## 0.6.1

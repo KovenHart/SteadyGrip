@@ -159,6 +159,7 @@ inline FilterSettings Preset(int level) {
 struct FilterStats {
 	uint64_t corrections = 0;   // recalages > 0,2 mm absorbés
 	uint64_t teleports = 0;     // recalages étalés comme téléportations
+	uint64_t refinements = 0;   // même instant redemandé avec une pose différente (absorbé)
 	double lastCorrMm = 0;
 	double offsetMm = 0;        // écart actuel entre la sortie et la pose brute
 	double offsetDeg = 0;
@@ -203,9 +204,31 @@ public:
 			updateStatsOffsets();
 			return;
 		}
-		if (has_ && in.t == last_.t) { // même instant : même sortie
+		if (has_ && std::abs(in.t - last_.t) < kSameInstant) {
+			// Même instant demandé une seconde fois (Unity demande chaque heure d'affichage deux fois : pour
+			// l'image suivante, puis pour l'image en cours, avec des capteurs plus frais). L'écart entre les deux
+			// réponses du runtime est un recalage comme un autre : on l'absorbe dans le décalage, pour que la pose
+			// rendue pour cet instant ne change pas. Sans cela, ce recalage passait tel quel dans l'image.
+			const V3 ePos = in.p - last_.p;
+			const Q eRot = (in.q * last_.q.conj()).normalized();
+			const double eMm = ePos.norm() * 1000.0;
+			const double eDeg = qlog(eRot).norm() * 180.0 / 3.14159265358979;
+			if (eMm < s.teleportMm && eDeg < s.teleportDeg) {
+				posOff_ = posOff_ - ePos;
+				if (eDeg < s.maxRotOffsetDeg) rotOff_ = (rotOff_ * eRot.conj()).normalized();
+				const double offMm = posOff_.norm() * 1000.0;
+				if (offMm > s.maxOffsetMm) posOff_ = posOff_ * (s.maxOffsetMm / offMm);
+				const double rotOffRad = qlog(rotOff_).norm(), rotLim = s.maxRotOffsetDeg * 3.14159265358979 / 180.0;
+				if (rotOffRad > rotLim) rotOff_ = qexp(qlog(rotOff_) * (rotLim / rotOffRad));
+				if (eMm > 0.2) stats_.refinements++;
+				const double t0 = last_.t;
+				last_ = in;
+				last_.t = t0; // l'instant de référence ne bouge pas
+				if (histN_ > 0) hist_[0] = last_;
+			}
 			outP = in.p + posOff_ + tpOff_;
 			outQ = (tpRot_ * rotOff_ * in.q).normalized();
+			updateStatsOffsets();
 			return;
 		}
 		if (has_ && in.t < last_.t) { // requête dans le passé : on applique le décalage courant sans l'actualiser
@@ -325,6 +348,7 @@ public:
 
 private:
 	static constexpr int kHist = 6;
+	static constexpr double kSameInstant = 0.002; // deux demandes à moins de 2 ms d'écart visent la même image
 
 	void pushHistory(const PoseIn& in) {
 		for (int i = kHist - 1; i > 0; i--) hist_[i] = hist_[i - 1];
@@ -433,9 +457,16 @@ public:
 	double beta = 10.0;     // Hz ajoutés par rad/s de vitesse de rotation (réglé sur des sessions réelles)
 	double dCutoffHz = 5.0; // lissage de la vitesse
 	Q apply(double t, const Q& q, double strength) {
-		// Le jeu demande souvent la même pose plusieurs fois pour un même instant (une fois par image et par
-		// usage) : on renvoie alors la même correction, sans faire avancer le filtre.
-		if (strength > 0 && init_ && t <= lastT_ && lastT_ - t < 0.2) return (corr_ * q).normalized();
+		// Le jeu demande souvent la pose plusieurs fois pour un même instant (une fois par image et par usage,
+		// ou deux fois chaque heure d'affichage avec Unity, la seconde avec des capteurs plus frais) : on rend
+		// alors la même orientation, sans faire avancer le filtre.
+		if (strength > 0 && init_ && std::abs(t - lastT_) < 0.002) {
+			last_ = q;
+			corr_ = out_ * q.conj();
+			return out_;
+		}
+		// Instant plus ancien : on applique la dernière correction.
+		if (strength > 0 && init_ && t < lastT_ && lastT_ - t < 0.2) return (corr_ * q).normalized();
 		if (strength <= 0 || !init_ || t - lastT_ > 0.2) {
 			init_ = strength > 0;
 			out_ = q;

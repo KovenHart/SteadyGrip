@@ -52,6 +52,9 @@ target_compile_options(test_app PRIVATE /utf-8)
 # Évaluation de la stabilisation de l'orientation sur une session TrackProbe : orient_eval session.csv
 add_executable(orient_eval tests/orient_eval.cpp)
 target_compile_options(orient_eval PRIVATE /utf-8)
+# Simulation du rythme de demandes de Unity (chaque heure d'affichage demandée deux fois) : unity_eval s | u
+add_executable(unity_eval tests/unity_eval.cpp)
+target_compile_options(unity_eval PRIVATE /utf-8)
 
 foreach(t SteadyGrip SteadyGripApp)
   target_compile_options(${t} PRIVATE /utf-8 /W3)

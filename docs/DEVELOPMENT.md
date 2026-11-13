@@ -49,6 +49,7 @@ The interface can be opened in a browser (`ui/index.html`): without the app, it 
 | `test_lossguard.exe` | holding the controller during a loss, arm model, proportional return, grip linking, loss-map angles, orientation stabilization, grip debounce |
 | `test_app.exe` | JSON messages between interface and app, Steam file parsing |
 | `bench.exe`, `orient_eval.exe`, `motion_eval.exe` (in `tests/`) | replay a TrackProbe session (CSV) to measure smoothing |
+| `unity_eval.exe s` / `u` | simulates one request per frame, or two requests per display time (Unity), and measures jerks |
 
 ## Version and distribution
 

@@ -294,6 +294,29 @@ int main() {
 		check(st3.shortReleases == 1 && st3.masked == 0, "relâchement suivi d'un appui rapide signalé dans le journal");
 	}
 
+	std::printf("10. Même instant demandé deux fois (Unity)\n");
+	{
+		// Chaque heure d'affichage est demandée deux fois : pour l'image suivante, puis pour l'image en cours,
+		// avec une réponse un peu différente. La pose rendue doit rester celle de la première demande.
+		FilterSettings s;
+		PoseFilter f;
+		const double P = 1.0 / 72;
+		bool stable = true;
+		for (int k = 1; k < 200; k++) {
+			PoseIn in; in.poseValid = in.velValid = true; in.q = Q{};
+			in.t = k * P; in.v = V3{ 0.3, 0, 0 };
+			in.p = V3{ 0.3 * in.t, 0, 0 } + V3{ (k % 3) * 0.001, 0, 0 };
+			V3 o1, o2; Q q1, q2;
+			f.process(in, s, o1, q1);
+			in.p = in.p + V3{ 0.002 * ((k % 2) ? 1 : -1), 0.001, 0 };   // seconde réponse, plus fraîche
+			in.t += 0.0000005;                                         // même image, à quelques ns près
+			f.process(in, s, o2, q2);
+			if ((o2 - o1).norm() > 1e-9) stable = false;
+		}
+		check(stable, "la seconde demande d'un même instant rend la même pose");
+		check(f.stats().refinements > 100, "les secondes demandes sont comptées");
+	}
+
 	std::printf("%s\n", fails ? "ÉCHEC" : "OK");
 	return fails;
 }

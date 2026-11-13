@@ -115,6 +115,14 @@ struct ActionSpaceInfo {
 	bool logged = false;
 };
 
+// Une image retenue pour les mesures (brut et sortie).
+struct StatSample {
+	bool has = false, velValid = false, ok = false;
+	double t = 0;
+	V3 rawP, outP, v, w;
+	Q rawQ, outQ;
+};
+
 struct StreamState {
 	PoseFilter filter;
 	int hand = -1;
@@ -130,7 +138,7 @@ struct StreamState {
 	// Bilan périodique pour le journal
 	double logT0 = 0;
 	uint64_t frames = 0, poseOk = 0, velOk = 0;
-	uint64_t logCorr0 = 0, logTp0 = 0;
+	uint64_t logCorr0 = 0, logTp0 = 0, logRef0 = 0;
 	int lastVelState = -1;
 	int lastTrackedState = -1;   // bit XR_SPACE_LOCATION_POSITION_TRACKED_BIT
 	double untrackedSince = 0;
@@ -179,6 +187,7 @@ struct StreamState {
 	double winSpeed[5] = {};
 	bool winOk[5] = {};
 	int winN = 0;
+	StatSample pend;                    // dernière réponse pour l'instant en cours
 };
 
 std::mutex g_mutex;
@@ -535,6 +544,48 @@ bool PartnerPose(StreamState& st, XrSpace space, const ActionSpaceInfo& asi, XrS
 	return c->second.ok;
 }
 
+// Mesures d'une image (à-coups, tremblement), sur la dernière réponse rendue pour cet instant. Appelé sous g_mutex.
+void CommitStatSample(StreamState& st, const StatSample& sm) {
+	auto& per = st.period;
+	if (st.hist >= 2 && sm.ok) {
+		const double speed = sm.velValid ? sm.v.norm() : (sm.rawP - st.rawP1).norm() * 72.0;
+		auto stepRot = [](const Q& a, const Q& b) { Q d = a * b.conj(); if (d.w < 0) d = Q{ -d.w, -d.x, -d.y, -d.z }; return qlog(d); };
+		const V3 r1 = stepRot(sm.rawQ, st.rawQ1), r0 = stepRot(st.rawQ1, st.rawQ2);
+		const double angSpeed = sm.velValid ? sm.w.norm() : r1.norm() * 72.0;
+		if (angSpeed < 0.15 && speed < 0.15) {
+			per.stillRaw += (r1 - r0).norm() * 57.2958;
+			per.stillOut += (stepRot(sm.outQ, st.outQ1) - stepRot(st.outQ1, st.outQ2)).norm() * 57.2958;
+			per.stillN++;
+		}
+	}
+	{
+		// À-coups : écart entre la position d'une image et un lissage polynomial de ses voisines
+		// (Savitzky-Golay, 5 images, exact pour un mouvement à accélération constante). Un mouvement régulier,
+		// même rapide ou qui accélère, donne zéro ; seuls les sauts d'une image à l'autre comptent.
+		for (int k = 0; k < 4; k++) {
+			st.winRaw[k] = st.winRaw[k + 1]; st.winOut[k] = st.winOut[k + 1];
+			st.winSpeed[k] = st.winSpeed[k + 1]; st.winOk[k] = st.winOk[k + 1];
+		}
+		st.winRaw[4] = sm.rawP;
+		st.winOut[4] = sm.outP;
+		st.winSpeed[4] = sm.velValid ? sm.v.norm() : (st.hist >= 1 ? (sm.rawP - st.rawP1).norm() * 72.0 : 0.0);
+		st.winOk[4] = sm.ok;
+		st.winN = std::min(st.winN + 1, 5);
+		if (st.winN == 5 && st.winOk[0] && st.winOk[1] && st.winOk[2] && st.winOk[3] && st.winOk[4] && st.winSpeed[2] > 0.15 && st.winSpeed[2] < 1.5) {
+			auto residual = [](const V3* w) {
+				const V3 fit = (w[0] * -3.0 + w[1] * 12.0 + w[2] * 17.0 + w[3] * 12.0 + w[4] * -3.0) * (1.0 / 35.0);
+				return (w[2] - fit).norm() * 1000.0;
+			};
+			per.movRaw += residual(st.winRaw);
+			per.movOut += residual(st.winOut);
+			per.movN++;
+		}
+		st.rawP2 = st.rawP1; st.rawP1 = sm.rawP; st.outP2 = st.outP1; st.outP1 = sm.outP;
+		st.rawQ2 = st.rawQ1; st.rawQ1 = sm.rawQ; st.outQ2 = st.outQ1; st.outQ1 = sm.outQ;
+		st.hist = std::min(st.hist + 1, 2);
+	}
+}
+
 // Filtre une pose localisée. Appelé sous g_mutex.
 void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFlags flags, XrPosef& pose,
 	const XrSpaceVelocityFlags* velFlags, const XrVector3f* linVel, const XrVector3f* angVel) {
@@ -605,11 +656,12 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 	if (st.logT0 == 0) st.logT0 = now;
 	if (now - st.logT0 >= 10.0) {
 		const FilterStats& fs = st.filter.stats();
-		Log("[%s] espace %p : %llu images, pose valide %.0f %%, position suivie %.0f %%, vitesses %.0f %%, %.1f recalages/s, %llu téléportations, écart %.2f mm\n",
+		Log("[%s] espace %p : %llu images, pose valide %.0f %%, position suivie %.0f %%, vitesses %.0f %%, %.1f recalages/s, %.1f redemandes corrigées/s, %llu téléportations, écart %.2f mm\n",
 			st.hand == 0 ? "gauche" : st.hand == 1 ? "droite" : "?", (void*)space, (unsigned long long)st.frames,
 			st.frames ? 100.0 * st.poseOk / st.frames : 0.0, st.frames ? 100.0 * st.posTracked / st.frames : 0.0,
 			st.poseOk ? 100.0 * st.velOk / st.poseOk : 0.0,
-			(fs.corrections - st.logCorr0) / (now - st.logT0), (unsigned long long)(fs.teleports - st.logTp0), fs.offsetMm);
+			(fs.corrections - st.logCorr0) / (now - st.logT0), (fs.refinements - st.logRef0) / (now - st.logT0),
+			(unsigned long long)(fs.teleports - st.logTp0), fs.offsetMm);
 		if (!st.fwdDtMs.empty()) {
 			auto v = st.fwdDtMs;
 			std::sort(v.begin(), v.end());
@@ -625,6 +677,7 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 		for (auto& b : st.relBins) b = 0;
 		st.logT0 = now;
 		st.logCorr0 = fs.corrections;
+		st.logRef0 = fs.refinements;
 		st.logTp0 = fs.teleports;
 		st.frames = st.poseOk = st.velOk = st.posTracked = 0;
 	}
@@ -712,46 +765,24 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 		st.lastPeriodPhase = phase;
 		const bool newFrame = in.t > st.lastStatT;
 		if (newFrame) st.lastStatT = in.t;
-		if (newFrame && st.hist >= 2 && st.trackState != TrackLost && st.trackState != TrackIniting && phase == 0) {
-			const double speed = in.velValid ? in.v.norm() : (in.p - st.rawP1).norm() * 72.0;
-			auto stepRot = [](const Q& a, const Q& b) { Q d = a * b.conj(); if (d.w < 0) d = Q{ -d.w, -d.x, -d.y, -d.z }; return qlog(d); };
-			const V3 r1 = stepRot(in.q, st.rawQ1), r0 = stepRot(st.rawQ1, st.rawQ2);
-			const double angSpeed = in.velValid ? in.w.norm() : r1.norm() * 72.0;
-			if (angSpeed < 0.15 && speed < 0.15) {
-				per.stillRaw += (r1 - r0).norm() * 57.2958;
-				per.stillOut += (stepRot(q, st.outQ1) - stepRot(st.outQ1, st.outQ2)).norm() * 57.2958;
-				per.stillN++;
-			}
-		}
-		if (newFrame) {
-			// À-coups : écart entre la position d'une image et un lissage polynomial de ses voisines
-			// (Savitzky-Golay, 5 images, exact pour un mouvement à accélération constante). Un mouvement régulier,
-			// même rapide ou qui accélère, donne zéro ; seuls les sauts d'une image à l'autre comptent.
-			for (int k = 0; k < 4; k++) {
-				st.winRaw[k] = st.winRaw[k + 1]; st.winOut[k] = st.winOut[k + 1];
-				st.winSpeed[k] = st.winSpeed[k + 1]; st.winOk[k] = st.winOk[k + 1];
-			}
-			st.winRaw[4] = in.p;
-			st.winOut[4] = p;
-			st.winSpeed[4] = in.velValid ? in.v.norm() : (st.hist >= 1 ? (in.p - st.rawP1).norm() * 72.0 : 0.0);
-			st.winOk[4] = st.trackState != TrackLost && st.trackState != TrackIniting && phase == 0;
-			st.winN = std::min(st.winN + 1, 5);
-			if (st.winN == 5 && st.winOk[0] && st.winOk[1] && st.winOk[2] && st.winOk[3] && st.winOk[4] && st.winSpeed[2] > 0.15 && st.winSpeed[2] < 1.5) {
-				auto residual = [](const V3* w) {
-					const V3 fit = (w[0] * -3.0 + w[1] * 12.0 + w[2] * 17.0 + w[3] * 12.0 + w[4] * -3.0) * (1.0 / 35.0);
-					return (w[2] - fit).norm() * 1000.0;
-				};
-				per.movRaw += residual(st.winRaw);
-				per.movOut += residual(st.winOut);
-				per.movN++;
-			}
-			st.rawP2 = st.rawP1; st.rawP1 = in.p; st.outP2 = st.outP1; st.outP1 = p;
-			st.rawQ2 = st.rawQ1; st.rawQ1 = in.q; st.outQ2 = st.outQ1; st.outQ1 = q;
-			st.hist = std::min(st.hist + 1, 2);
+		// Le jeu peut demander plusieurs fois le même instant (Unity : deux fois chaque heure d'affichage, la
+		// seconde avec des capteurs plus frais) : on mesure la dernière réponse pour chaque instant, quand
+		// l'instant suivant arrive. Les demandes pour un instant plus ancien sont ignorées.
+		StatSample cur;
+		cur.has = true; cur.t = in.t; cur.rawP = in.p; cur.rawQ = in.q; cur.outP = p; cur.outQ = q;
+		cur.v = in.v; cur.w = in.w; cur.velValid = in.velValid;
+		cur.ok = st.trackState != TrackLost && st.trackState != TrackIniting && phase == 0;
+		if (st.pend.has && std::abs(in.t - st.pend.t) < 0.002) {
+			cur.t = st.pend.t;
+			st.pend = cur;
+		} else if (!st.pend.has || in.t > st.pend.t) {
+			if (st.pend.has) CommitStatSample(st, st.pend);
+			st.pend = cur;
 		}
 	} else {
 		st.hist = 0;
 		st.winN = 0;
+		st.pend.has = false;
 	}
 	PublishStats(st);
 }

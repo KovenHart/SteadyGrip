@@ -49,6 +49,7 @@ L'interface peut s'ouvrir dans un navigateur (`ui/index.html`) : sans l'applicat
 | `test_lossguard.exe` | maintien de la manette pendant une perte, modèle de bras, retour proportionné, liaison par les grips, angles de la carte des pertes, stabilisation de l'orientation, anti-rebond du grip |
 | `test_app.exe` | messages JSON entre l'interface et l'application, lecture des fichiers de Steam |
 | `bench.exe`, `orient_eval.exe`, `motion_eval.exe` (dans `tests/`) | rejouent une session TrackProbe (CSV) pour mesurer le lissage |
+| `unity_eval.exe s` / `u` | simule une demande par image, ou deux demandes par heure d'affichage (Unity), et mesure les à-coups |
 
 ## Version et distribution
 
