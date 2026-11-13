@@ -67,6 +67,9 @@ PFN_xrCreateReferenceSpace g_xrCreateReferenceSpace = nullptr;
 PFN_xrGetActionStateFloat g_xrGetActionStateFloat = nullptr;
 PFN_xrGetActionStateBoolean g_xrGetActionStateBoolean = nullptr;
 PFN_xrSyncActions g_xrSyncActions = nullptr;
+PFN_xrWaitFrame g_xrWaitFrame = nullptr;
+XrTime g_displayTime = 0;          // heure d'affichage prévue de la dernière image (xrWaitFrame)
+XrDuration g_displayPeriod = 0;
 std::string g_appName = "?";
 
 // Actions booléennes ou analogiques du jeu : on repère celles liées au bouton grip (« squeeze »).
@@ -116,6 +119,11 @@ struct StreamState {
 	PoseFilter filter;
 	int hand = -1;
 	std::string path;
+	// Diagnostic : à quels instants le jeu demande la pose (bilan toutes les 10 s).
+	XrTime lastCallT = 0;
+	uint64_t callFwd = 0, callSame = 0, callPast = 0;
+	std::vector<double> fwdDtMs;       // pas de temps des demandes qui avancent
+	uint64_t relBins[5] = {};          // écart à l'heure d'affichage prévue : < -20 ms, -20..-2, ±2, +2..+20, > +20
 	double statT0 = 0;
 	uint64_t statCorr0 = 0;
 	double corrPerSec = 0;
@@ -549,6 +557,18 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 			(velFlags && (*velFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)) ? "fournies" : "ABSENTES");
 	}
 
+	// Diagnostic du rythme des demandes : même instant, dans le passé, ou en avant (et de combien).
+	if (st.lastCallT) {
+		if (time == st.lastCallT) st.callSame++;
+		else if (time < st.lastCallT) st.callPast++;
+		else { st.callFwd++; if (st.fwdDtMs.size() < 4000) st.fwdDtMs.push_back((time - st.lastCallT) * 1e-6); }
+	}
+	if (time > st.lastCallT || !st.lastCallT) st.lastCallT = time;
+	if (g_displayTime) {
+		const double rel = (double)(time - g_displayTime) * 1e-6;
+		st.relBins[rel < -20 ? 0 : rel < -2 ? 1 : rel <= 2 ? 2 : rel <= 20 ? 3 : 4]++;
+	}
+
 	PoseIn in;
 	in.t = (double)time * 1e-9;
 	in.poseValid = (flags & XR_SPACE_LOCATION_POSITION_VALID_BIT) && (flags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT);
@@ -590,6 +610,19 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 			st.frames ? 100.0 * st.poseOk / st.frames : 0.0, st.frames ? 100.0 * st.posTracked / st.frames : 0.0,
 			st.poseOk ? 100.0 * st.velOk / st.poseOk : 0.0,
 			(fs.corrections - st.logCorr0) / (now - st.logT0), (unsigned long long)(fs.teleports - st.logTp0), fs.offsetMm);
+		if (!st.fwdDtMs.empty()) {
+			auto v = st.fwdDtMs;
+			std::sort(v.begin(), v.end());
+			const auto& b = st.relBins;
+			Log("    demandes : %llu en avant, %llu au même instant, %llu dans le passé ; pas en avant : min %.1f ms, médiane %.1f, 90 %% %.1f, max %.1f ; "
+				"heure demandée / affichage prévu (période %.1f ms) : <-20 ms %llu, -20..-2 %llu, ±2 %llu, +2..+20 %llu, >+20 %llu\n",
+				(unsigned long long)st.callFwd, (unsigned long long)st.callSame, (unsigned long long)st.callPast,
+				v.front(), v[v.size() / 2], v[v.size() * 9 / 10], v.back(), g_displayPeriod * 1e-6,
+				(unsigned long long)b[0], (unsigned long long)b[1], (unsigned long long)b[2], (unsigned long long)b[3], (unsigned long long)b[4]);
+		}
+		st.fwdDtMs.clear();
+		st.callFwd = st.callSame = st.callPast = 0;
+		for (auto& b : st.relBins) b = 0;
 		st.logT0 = now;
 		st.logCorr0 = fs.corrections;
 		st.logTp0 = fs.teleports;
@@ -805,6 +838,16 @@ void RecordGrip(XrAction action, XrPath subPath, bool active, double value) {
 	g.value = value;
 	g.t = NowSeconds();
 	g.seen = true;
+}
+
+XrResult XRAPI_CALL SG_xrWaitFrame(XrSession session, const XrFrameWaitInfo* info, XrFrameState* state) {
+	const XrResult r = g_xrWaitFrame(session, info, state);
+	if (XR_SUCCEEDED(r) && state) {
+		std::lock_guard<std::mutex> lock(g_mutex);
+		g_displayTime = state->predictedDisplayTime;
+		g_displayPeriod = state->predictedDisplayPeriod;
+	}
+	return r;
 }
 
 XrResult XRAPI_CALL SG_xrSyncActions(XrSession session, const XrActionsSyncInfo* syncInfo) {
@@ -1035,6 +1078,7 @@ XrResult XRAPI_CALL SG_xrGetInstanceProcAddr(XrInstance instance, const char* na
 	else if (n == "xrGetActionStateFloat" && g_xrGetActionStateFloat) *function = (PFN_xrVoidFunction)SG_xrGetActionStateFloat;
 	else if (n == "xrGetActionStateBoolean" && g_xrGetActionStateBoolean) *function = (PFN_xrVoidFunction)SG_xrGetActionStateBoolean;
 	else if (n == "xrSyncActions" && g_xrSyncActions) *function = (PFN_xrVoidFunction)SG_xrSyncActions;
+	else if (n == "xrWaitFrame" && g_xrWaitFrame) *function = (PFN_xrVoidFunction)SG_xrWaitFrame;
 	else if (n == "xrLocateSpaces" && g_xrLocateSpaces) *function = (PFN_xrVoidFunction)SG_xrLocateSpaces;
 	else if (n == "xrLocateSpacesKHR" && g_xrLocateSpacesKHR) *function = (PFN_xrVoidFunction)SG_xrLocateSpacesKHR;
 	return r;
@@ -1071,6 +1115,7 @@ XrResult XRAPI_CALL SG_xrCreateApiLayerInstance(const XrInstanceCreateInfo* info
 	Resolve(g_instance, "xrGetActionStateFloat", g_xrGetActionStateFloat);
 	Resolve(g_instance, "xrGetActionStateBoolean", g_xrGetActionStateBoolean);
 	Resolve(g_instance, "xrSyncActions", g_xrSyncActions);
+	Resolve(g_instance, "xrWaitFrame", g_xrWaitFrame);
 
 	g_sharedOk = g_shared.open();
 	const char* app = info && info->applicationInfo.applicationName[0] ? info->applicationInfo.applicationName : "?";
