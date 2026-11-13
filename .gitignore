@@ -1,0 +1,6 @@
+# Dossiers de compilation et de paquet
+/build/
+/dist/
+/release/
+.vs/
+build.log

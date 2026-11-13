@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr" data-theme="classic">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SteadyGrip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&amp;family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@300;400&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <button type="button" class="brand" data-action="home" aria-label="Retour à mes jeux">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+    <span>SteadyGrip</span>
+  </button>
+  <div id="ready" class="ready" role="status" aria-live="polite"></div>
+  <button type="button" class="btn ghost" data-action="settings">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+    Paramètres
+  </button>
+</header>
+<div id="checks" class="checks"></div>
+<main id="view"></main>
+<div id="modal" class="modal-backdrop" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

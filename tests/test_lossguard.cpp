@@ -1,0 +1,259 @@
+// Tests sans casque : maintien de la manette pendant une perte (LossGuard), repère du buste,
+// modèle de bras, retour proportionné, liaison des mains, stabilisation de l'orientation.
+#include "../src/common/PoseFilter.h"
+#include <cstdio>
+#include <random>
+using namespace sg;
+
+static int fails = 0;
+static void check(bool ok, const char* what) {
+	std::printf("  %s : %s\n", ok ? "ok" : "ÉCHEC", what);
+	if (!ok) fails++;
+}
+
+// Tête qui tourne autour du cou (comme en vrai) : position des yeux = cou + rotation * (0, 0,10, -0,08).
+static V3 HeadFromNeck(const V3& neck, const Q& hq) { return neck - BodyFrame::rotate(hq, V3{ 0, -0.10, 0.08 }); }
+static const V3 kNeck{ 0, 1.5, 0 };
+static const V3 none;
+static const Q qid;
+
+int main() {
+	std::printf("1. Les deux mains perdues : buste, modèle de bras, retour proportionné\n");
+	{
+		FilterSettings s;
+		LossGuard g;
+		const Q head0;
+		V3 out;
+		double t = 0;
+		const V3 start{ 0.1, 1.15, -0.45 };
+		for (int i = 0; i < 90; i++, t += 1 / 90.0) out = g.apply(t, TrackTracking, start, qid, start, true, HeadFromNeck(kNeck, head0), head0, false, none, qid, s);
+		// Perte : l'estimation de Pimax dérive vers le sol à 2 m/s.
+		V3 p = start;
+		for (int i = 0; i < 45; i++, t += 1 / 90.0) { p.y -= 2.0 / 90; out = g.apply(t, TrackLost, p, qid, p, true, HeadFromNeck(kNeck, head0), head0, false, none, qid, s); }
+		check((out - start).norm() <= 0.301, "dérive limitée à 30 cm pendant la perte");
+		const V3 held0 = out;
+		// Réinitialisation ; on baisse les yeux de 60° vers l'arme pendant 1 s : l'arme ne doit pas bouger.
+		const Q down = qexp({ -1.047, 0, 0 });
+		for (int i = 0; i < 90; i++, t += 1 / 90.0) { p.y -= 0.02; out = g.apply(t, TrackIniting, p, qid, p, true, HeadFromNeck(kNeck, down), down, false, none, qid, s); }
+		std::printf("     tête baissée de 60° : l'arme a bougé de %.1f cm\n", (out - held0).norm() * 100);
+		check((out - held0).norm() < 0.01, "regarder son arme ne la déplace pas (repère du buste)");
+		// On lève le poignet de 45° : avec le modèle de bras, la main monte.
+		const Q wrist = qexp({ 0.785, 0, 0 });
+		for (int i = 0; i < 20; i++, t += 1 / 90.0) out = g.apply(t, TrackIniting, p, wrist, p, true, HeadFromNeck(kNeck, down), down, false, none, qid, s);
+		std::printf("     poignet levé de 45° : la main monte de %.1f cm\n", (out.y - held0.y) * 100);
+		check(out.y - held0.y > 0.07, "modèle de bras : lever le poignet lève l'arme");
+		// On tourne le corps de 90° (tête et buste) : l'arme suit le buste.
+		const Q turn = qexp({ 0, 1.5708, 0 });
+		for (int i = 0; i < 180; i++, t += 1 / 90.0) out = g.apply(t, TrackIniting, p, turn * wrist, p, true, HeadFromNeck(kNeck, turn), turn, false, none, qid, s);
+		const V3 rel = out - kNeck;
+		std::printf("     après un quart de tour : main en (%.2f, %.2f, %.2f) par rapport au cou\n", rel.x, rel.y, rel.z);
+		check(rel.x < -0.3, "l'arme maintenue suit la rotation du corps");
+		// Reprise : écart de 50 cm environ ; retour progressif et proportionné.
+		const V3 truth = kNeck + V3{ -0.45, -0.15, 0.25 };
+		V3 prev = out;
+		double maxStep = 0;
+		for (int i = 0; i < 45; i++, t += 1 / 90.0) {
+			out = g.apply(t, TrackTracking, truth, turn, truth, true, HeadFromNeck(kNeck, turn), turn, false, none, qid, s);
+			maxStep = std::max(maxStep, (out - prev).norm());
+			prev = out;
+		}
+		std::printf("     reprise : écart %.0f cm, retour en %.0f ms, plus grand pas %.1f cm par image\n", g.lastReturnGapM() * 100, g.lastReturnMs(), maxStep * 100);
+		check((out - truth).norm() < 1e-6 && maxStep < 0.08 && g.lastReturnMs() > 150, "retour progressif, plus long pour un grand écart");
+		// Petit écart : retour court.
+		for (int i = 0; i < 5; i++, t += 1 / 90.0) out = g.apply(t, TrackLost, truth + V3{ 0, 0, -0.02 * i }, turn, truth, true, HeadFromNeck(kNeck, turn), turn, false, none, qid, s);
+		out = g.apply(t, TrackTracking, truth, turn, truth, true, HeadFromNeck(kNeck, turn), turn, false, none, qid, s);
+		std::printf("     petit écart : %.0f cm, retour en %.0f ms\n", g.lastReturnGapM() * 100, g.lastReturnMs());
+		check(g.lastReturnMs() < 120, "petit écart : retour court");
+		s.lossGuard = false;
+		const V3 o = g.apply(t, TrackIniting, { 1, 2, 3 }, qid, { 1, 2, 3 }, true, HeadFromNeck(kNeck, qid), qid, false, none, qid, s);
+		check((o - V3{ 1, 2, 3 }).norm() < 1e-9, "option décochée : aucune modification");
+	}
+
+	std::printf("2. Arme à deux mains, liaison en mode automatique : main avant perdue, on épaule\n");
+	{
+		FilterSettings s;
+		s.coupleMode = CoupleAuto;
+		LossGuard left;
+		const V3 hp = HeadFromNeck(kNeck, qid);
+		V3 right{ 0.15, 0.95, -0.25 }, leftTrue{ 0.10, 1.05, -0.58 };
+		V3 out;
+		for (int i = 0; i < 45; i++) out = left.apply(i / 90.0, TrackTracking, leftTrue, qid, leftTrue, true, hp, qid, true, right, qid, s);
+		const V3 gun0 = out - right;
+		V3 est = leftTrue;
+		const Q raise = qexp({ 0.9, 0, 0 });
+		double worstAngle = 0;
+		for (int i = 0; i < 60; i++) {
+			const double a = i / 59.0, t = 0.5 + i / 90.0;
+			const V3 r = V3{ 0.15, 0.95, -0.25 } + (V3{ 0.12, 1.45, -0.15 } - V3{ 0.15, 0.95, -0.25 }) * a;
+			const Q q = qexp(qlog(raise) * a);
+			est.y -= 0.01;
+			out = left.apply(t, i < 20 ? TrackLost : TrackIniting, est, q, est, true, hp, qid, true, r, q, s);
+			const V3 expected = BodyFrame::rotate(q, gun0);
+			const V3 got = out - r;
+			const double c = (got.x * expected.x + got.y * expected.y + got.z * expected.z) / (got.norm() * expected.norm());
+			worstAngle = std::max(worstAngle, std::acos(std::clamp(c, -1.0, 1.0)) * 180 / 3.14159265);
+		}
+		std::printf("     écart d'angle maximal de l'arme pendant la montée : %.1f°\n", worstAngle);
+		check(left.coupled() && left.lastRigid() && worstAngle < 12, "la main gauche suit la main droite");
+	}
+
+	std::printf("3. Épée et bouclier, mode automatique : l'épée sort du champ en plein coup\n");
+	{
+		FilterSettings s;
+		s.coupleMode = CoupleAuto;
+		LossGuard sword;
+		const V3 hp = HeadFromNeck(kNeck, qid);
+		const V3 shield{ -0.25, 1.25, -0.35 };
+		for (int i = 0; i < 90; i++) {
+			const double a = i / 90.0 * 6.28;
+			const V3 p{ 0.25 + 0.2 * std::cos(a), 1.3 + 0.2 * std::sin(a), -0.4 };
+			sword.apply(i / 90.0, TrackTracking, p, qid, p, true, hp, qid, true, shield, qid, s);
+		}
+		V3 truth{ 0.45, 1.3, -0.4 }, out;
+		double worst = 0;
+		for (int i = 0; i < 20; i++) {
+			truth = truth + V3{ 0.005, 0.012, 0.004 };
+			out = sword.apply(1 + i / 90.0, TrackLost, truth, qid, truth, true, hp, qid, true, shield, qid, s);
+			worst = std::max(worst, (out - truth).norm());
+		}
+		check(!sword.coupled() && !sword.lastRigid() && worst < 0.001, "mains indépendantes : l'épée suit l'estimation de Pimax");
+	}
+
+	std::printf("4. Réglage par défaut (liaison « jamais ») avec une arme à deux mains\n");
+	{
+		FilterSettings s;
+		LossGuard left;
+		const V3 hp = HeadFromNeck(kNeck, qid), right{ 0.15, 0.95, -0.25 }, lp{ 0.10, 1.05, -0.58 };
+		for (int i = 0; i < 45; i++) left.apply(i / 90.0, TrackTracking, lp, qid, lp, true, hp, qid, true, right, qid, s);
+		for (int i = 0; i < 10; i++) left.apply(0.5 + i / 90.0, TrackLost, lp, qid, lp, true, hp, qid, true, right, qid, s);
+		check(s.coupleMode == CoupleNever && !left.coupled(), "pas de liaison par défaut");
+	}
+
+	std::printf("5. Mode automatique, pertes courtes à répétition (cas réel de CrossFire)\n");
+	{
+		FilterSettings s;
+		s.coupleMode = CoupleAuto;
+		LossGuard left;
+		const V3 hp = HeadFromNeck(kNeck, qid), right{ 0.15, 0.95, -0.25 }, lp{ 0.10, 1.05, -0.58 };
+		double t = 0;
+		for (int i = 0; i < 90; i++, t += 1 / 90.0) left.apply(t, TrackTracking, lp, qid, lp, true, hp, qid, true, right, qid, s);
+		int coupledLosses = 0;
+		for (int cycle = 0; cycle < 10; cycle++) {
+			for (int i = 0; i < 18; i++, t += 1 / 90.0) left.apply(t, TrackLost, lp, qid, lp, true, hp, qid, true, right, qid, s);
+			coupledLosses += left.coupled();
+			for (int i = 0; i < 5; i++, t += 1 / 90.0) left.apply(t, TrackTracking, lp, qid, lp, true, hp, qid, true, right, qid, s);
+		}
+		check(coupledLosses == 10, "la décision « solidaires » tient malgré les pertes rapprochées");
+	}
+
+	std::printf("6. Stabilisation de l'orientation\n");
+	{
+		std::mt19937 rng(3);
+		std::normal_distribution<double> n(0, 0.15 * 3.14159265 / 180); // tremblement de 0,15°
+		OrientSmoother sm;
+		double inJit = 0, outJit = 0;
+		Q prevIn, prevOut;
+		for (int i = 0; i < 900; i++) {
+			const Q q = qexp({ n(rng), n(rng), n(rng) });
+			const Q o = sm.apply(i / 90.0, q, 40);
+			if (i > 90) {
+				inJit += qlog(q * prevIn.conj()).norm();
+				outJit += qlog(o * prevOut.conj()).norm();
+			}
+			prevIn = q;
+			prevOut = o;
+		}
+		std::printf("     immobile : tremblement d'une image à l'autre réduit de %.0f %%\n", 100 * (1 - outJit / inJit));
+		check(outJit < 0.4 * inJit, "le tremblement en visée est fortement réduit");
+		// Rotation rapide (3 rad/s) : retard faible.
+		double maxLag = 0;
+		for (int i = 0; i < 90; i++) {
+			const Q q = qexp({ 0, 3.0 * i / 90.0, 0 });
+			const Q o = sm.apply(10 + i / 90.0, q, 40);
+			if (i > 20) maxLag = std::max(maxLag, qlog(q * o.conj()).norm() * 180 / 3.14159265);
+		}
+		std::printf("     rotation rapide (170°/s) : retard maximal %.1f°\n", maxLag);
+		check(maxLag < 4.0, "pas de retard sensible en mouvement rapide");
+		// Le jeu demande deux fois la même pose par image : le résultat doit être le même qu'avec une seule demande.
+		{
+			std::mt19937 r2(5);
+			OrientSmoother once, twice;
+			double maxDiff = 0;
+			for (int i = 0; i < 900; i++) {
+				const Q q = qexp({ n(r2), 0.5 * std::sin(i / 30.0) + n(r2), n(r2) });
+				const Q a = once.apply(i / 72.0, q, 75);
+				twice.apply(i / 72.0, q, 75);
+				const Q b = twice.apply(i / 72.0, q, 75);
+				maxDiff = std::max(maxDiff, qlog(a * b.conj()).norm() * 180 / 3.14159265);
+			}
+			std::printf("     deux demandes par image : écart maximal %.5f°\n", maxDiff);
+			check(maxDiff < 1e-6, "demandes répétées au même instant : même résultat");
+		}
+		OrientSmoother off;
+		const Q q = qexp({ 0.1, 0.2, 0.3 });
+		check(qlog(off.apply(0, q, 0) * q.conj()).norm() < 1e-12, "réglage 0 : aucune modification");
+	}
+
+	std::printf("7. Liaison « deux grips serrés »\n");
+	{
+		FilterSettings s;
+		s.coupleMode = CoupleGrips;
+		const V3 hp = HeadFromNeck(kNeck, qid), lp{ 0.10, 1.05, -0.58 };
+		// a) Deux grips serrés : la main perdue suit l'autre main quand on épaule.
+		{
+			LossGuard left;
+			V3 right{ 0.15, 0.95, -0.25 }, out;
+			double t = 0;
+			for (int i = 0; i < 45; i++, t += 1 / 90.0) out = left.apply(t, TrackTracking, lp, qid, lp, true, hp, qid, true, right, qid, s, true);
+			const V3 gun0 = out - right;
+			V3 est = lp;
+			for (int i = 0; i < 60; i++, t += 1 / 90.0) {
+				right = right + V3{ 0, 0.008, 0 };
+				est.y -= 0.01; // l'estimation de Pimax tombe
+				out = left.apply(t, i < 20 ? TrackLost : TrackIniting, est, qid, est, true, hp, qid, true, right, qid, s, true);
+			}
+			std::printf("     estimation Pimax tombée de 60 cm ; position relative à l'autre main conservée à %.1f cm près\n", (out - right - gun0).norm() * 100);
+			check(left.coupled() && (out - right - gun0).norm() < 0.075, "deux grips serrés : la main perdue suit l'autre main (5 cm de tolérance pendant la perte)");
+			// b) On lâche le grip avant : la main redevient indépendante, sans saut.
+			const V3 before = out;
+			out = left.apply(t, TrackIniting, est, qid, est, true, hp, qid, true, right, qid, s, false);
+			std::printf("     grip relâché : saut de %.2f cm\n", (out - before).norm() * 100);
+			check(!left.coupled() && (out - before).norm() < 0.005, "grip relâché pendant la perte : main indépendante, sans saut");
+		}
+		// c) Un seul grip serré au début de la perte : pas de liaison.
+		{
+			LossGuard left;
+			const V3 right{ 0.15, 0.95, -0.25 };
+			for (int i = 0; i < 45; i++) left.apply(i / 90.0, TrackTracking, lp, qid, lp, true, hp, qid, true, right, qid, s, false);
+			for (int i = 0; i < 10; i++) left.apply(0.5 + i / 90.0, TrackLost, lp, qid, lp, true, hp, qid, true, right, qid, s, false);
+			check(!left.coupled(), "un grip relâché : pas de liaison");
+		}
+		// d) Deux grips serrés mais mains à 1 m l'une de l'autre (pas une arme) : pas de liaison.
+		{
+			LossGuard left;
+			const V3 far{ 0.9, 1.3, -0.3 };
+			for (int i = 0; i < 45; i++) left.apply(i / 90.0, TrackTracking, lp, qid, lp, true, hp, qid, true, far, qid, s, true);
+			for (int i = 0; i < 10; i++) left.apply(0.5 + i / 90.0, TrackLost, lp, qid, lp, true, hp, qid, true, far, qid, s, true);
+			check(!left.coupled(), "mains trop éloignées : pas de liaison malgré les grips");
+		}
+	}
+
+	std::printf("8. Carte des pertes : angles vus du casque\n");
+	{
+		const V3 hp{ 0, 1.6, 0 };
+		double az, el, d;
+		HeadAngles(hp, qid, hp + V3{ 0, -0.4, 0 }, az, el, d);
+		check(std::fabs(el + 90) < 1e-6 && std::fabs(d - 0.4) < 1e-9 && LossZones::El(el) == 4, "main sous le casque : -90°, zone « sous le casque »");
+		HeadAngles(hp, qid, hp + V3{ 0.5, 0, 0 }, az, el, d);
+		check(std::fabs(az - 90) < 1e-6 && LossZones::Az(az) == 4, "main à droite : +90°, zone « côté droit »");
+		// Tête tournée de 90° vers la gauche : une main devant le corps (axe -z) est alors à droite du regard.
+		const Q left90 = qexp({ 0, 1.5708, 0 });
+		HeadAngles(hp, left90, hp + V3{ 0, 0, -0.5 }, az, el, d);
+		check(std::fabs(az - 90) < 0.01, "les angles suivent la tête (repère des caméras)");
+		HeadAngles(hp, qid, hp + V3{ 0, -0.3, -0.3 }, az, el, d);
+		check(std::fabs(el + 45) < 1e-6 && LossZones::El(el) == 2 && LossZones::Az(az) == 2 && LossZones::Dist(d) == 1, "main devant, en bas à 45°");
+	}
+
+	std::printf("%s\n", fails ? "ÉCHEC" : "OK");
+	return fails;
+}

@@ -1,0 +1,95 @@
+# Compilation automatique de SteadyGrip sur une machine Windows de GitHub.
+#
+# - À chaque envoi (push) ou demande de fusion (pull request) : compile la couche OpenXR, l'application
+#   et les tests (MSVC), lance les tests, construit le paquet et le joint au résultat de l'exécution
+#   (onglet Actions > l'exécution > Artifacts).
+# - À chaque étiquette de la forme v1.2.3 : en plus, crée un brouillon de version (Releases) avec le
+#   paquet. Il reste à le relire et à cliquer sur « Publish release ».
+#   L'étiquette doit correspondre au fichier VERSION :  git tag v0.6.0  puis  git push origin v0.6.0
+name: Compilation et paquet
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # nécessaire seulement pour créer le brouillon de version
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Récupération des sources
+        uses: actions/checkout@v5
+
+      - name: Numéro de version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -TotalCount 1).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "VERSION invalide : '$version'" }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw "L'étiquette $env:GITHUB_REF_NAME ne correspond pas au fichier VERSION ($version) : attendu v$version."
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "SteadyGrip $version"
+
+      - name: Compilation (couche, application, tests)
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Tests sans casque
+        shell: pwsh
+        run: |
+          ./build/bin/Release/test_lossguard.exe
+          if ($LASTEXITCODE -ne 0) { throw "test_lossguard en échec (code $LASTEXITCODE)." }
+          ./build/bin/Release/test_app.exe
+          if ($LASTEXITCODE -ne 0) { throw "test_app en échec (code $LASTEXITCODE)." }
+
+      - name: Vérification de l'interface (JavaScript)
+        shell: pwsh
+        run: |
+          node --check ui/app.js
+          if ($LASTEXITCODE -ne 0) { throw "ui/app.js invalide." }
+
+      - name: Paquet
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $name = "SteadyGrip-$version-win64"
+          $dir = "release/$name"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $bin = 'build/bin/Release'
+          Copy-Item "$bin/SteadyGrip.dll", "$bin/XR_APILAYER_NOVENDOR_steadygrip.json", "$bin/SteadyGripApp.exe" $dir
+          Copy-Item "$bin/ui" "$dir/ui" -Recurse
+          Copy-Item README.md, README.en.md, CHANGELOG.md, CHANGELOG.en.md, LICENSE, THIRD-PARTY.md $dir
+          Compress-Archive -Path "$dir/*" -DestinationPath "release/$name.zip" -Force
+          $hash = (Get-FileHash "release/$name.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name.zip" | Set-Content "release/$name.zip.sha256" -Encoding ascii
+
+      - name: Paquet joint à l'exécution
+        uses: actions/upload-artifact@v6
+        with:
+          name: SteadyGrip-${{ steps.version.outputs.version }}-win64
+          path: |
+            release/*.zip
+            release/*.sha256
+          if-no-files-found: error
+
+      - name: Brouillon de version
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $files = @(Get-ChildItem release -File | Where-Object { $_.Name -like '*.zip' -or $_.Name -like '*.sha256' } | ForEach-Object { $_.FullName })
+          gh release create $env:GITHUB_REF_NAME @files --draft --title "SteadyGrip $version" --generate-notes
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
