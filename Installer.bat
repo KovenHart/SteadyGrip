@@ -76,7 +76,8 @@ echo Raccourcis : bureau et menu Demarrer. SteadyGrip va s'ouvrir.
 echo Done: SteadyGrip is installed in %SG_DIR%, with desktop and Start menu shortcuts.
 echo.
 start "" "%SG_DIR%\SteadyGripApp.exe"
-pause
+rem Succes : les deux fenetres se ferment seules (celle-ci apres 3 s, puis celle qui l'attendait).
+timeout /t 3 /nobreak >nul
 exit /b 0
 
 :copyfailed
