@@ -136,7 +136,7 @@ const ADV = [
     { key: 'maxLostDriftCm', label: 'Déplacement maximal', unit: ' cm', min: 5, max: 60, left: '5 cm', right: '60 cm', help: 'Distance que l\'arme peut parcourir pendant une perte.' },
     { key: 'maxReachCm', label: 'Longueur du bras', unit: ' cm', min: 50, max: 120, left: '50 cm', right: '120 cm', help: 'L\'arme ne s\'éloigne jamais plus de ton corps.' } ] },
   { title: 'Bouton grip', text: 'Avec « Grip qui lâche tout seul », un relâchement du grip plus court que ce délai est ignoré. Quand tu lâches vraiment, la main s\'ouvre avec ce délai de retard.', items: [
-    { key: 'gripHoldMs', label: 'Relâchements ignorés jusqu\'à', unit: ' ms', min: 30, max: 400, left: 'Lâcher immédiat', right: 'Grip très sûr', help: '120 ms suffit en général. Si l\'arme tombe encore, monte un peu.' } ] }
+    { key: 'gripHoldMs', label: 'Relâchements ignorés jusqu\'à', unit: ' ms', min: 30, max: 400, left: 'Lâcher immédiat', right: 'Grip très sûr', help: '60 ms suffit en général (les relâchements parasites mesurés durent moins de 30 ms). Si l\'arme tombe encore, monte un peu.' } ] }
 ];
 
 function renderAdvanced() {

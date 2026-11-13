@@ -124,7 +124,7 @@ Si l'application compagnon n'est pas lancée, ou pas en administrateur, la couch
 
 Avec le runtime OpenXR de Pimax, le bouton grip se relâche parfois une fraction de seconde alors qu'on le serre : la main s'ouvre et se referme, et l'arme peut tomber (Gunman Contract, par exemple). Pour ces jeux, activez **« Grip qui lâche tout seul »** sur la page du jeu.
 
-- SteadyGrip corrige alors les actions du jeu liées au grip (`/input/squeeze`) : un relâchement plus court que le délai (120 ms par défaut, de 30 à 400 ms dans Réglages avancés › Bouton grip) est ignoré, et la valeur rendue au jeu reste celle du grip serré.
+- SteadyGrip corrige alors les actions du jeu liées au grip (`/input/squeeze`) : un relâchement plus court que le délai (60 ms par défaut, de 30 à 400 ms dans Réglages avancés › Bouton grip) est ignoré, et la valeur rendue au jeu reste celle du grip serré.
 - Un vrai relâchement est pris en compte avec ce délai de retard.
 - Le journal indique, à chaque bilan, le nombre de relâchements parasites masqués et le plus long. S'il signale des « relâchements suivis d'un nouvel appui en moins de 0,4 s », augmentez un peu le délai.
 - Désactivé par défaut : dans les jeux où le grip fonctionne bien, il n'y a rien à corriger.

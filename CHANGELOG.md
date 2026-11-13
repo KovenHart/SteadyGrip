@@ -4,6 +4,10 @@
 
 Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
+## 0.6.2
+
+- Délai par défaut de « Grip qui lâche tout seul » ramené de 120 à 60 ms : dans Gunman Contract, les relâchements parasites mesurés durent 29 ms au plus (32 masqués en deux parties, aucun plus long). Un vrai relâchement est donc pris en compte deux fois plus vite. Les jeux dont le délai a déjà été réglé gardent leur valeur.
+
 ## 0.6.1
 
 - **Grip qui lâche tout seul** (nouvel interrupteur sur la page d'un jeu, désactivé par défaut) : avec le runtime OpenXR de Pimax, le bouton grip se relâche parfois une fraction de seconde. La main s'ouvre et se referme, et dans Gunman Contract, par exemple, l'arme tombe. SteadyGrip ignore maintenant les relâchements de moins de 120 ms (réglable de 30 à 400 ms dans les réglages avancés). Un vrai relâchement est pris en compte avec ce délai.

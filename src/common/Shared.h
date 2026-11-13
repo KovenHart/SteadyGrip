@@ -19,7 +19,7 @@ namespace sg {
 constexpr uint32_t kSharedMagic = 0x53475250; // 'SGRP'
 constexpr uint32_t kSharedVersion = 9;
 constexpr wchar_t kSharedName[] = L"Local\\SteadyGripShared_v9";
-constexpr char kVersion[] = "0.6.1";
+constexpr char kVersion[] = "0.6.2";
 
 enum Preset : int32_t { PresetOff = 0, PresetLight = 1, PresetMedium = 2, PresetStrong = 3, PresetCustom = 4 };
 

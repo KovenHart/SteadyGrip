@@ -4,6 +4,10 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.2
+
+- Default delay of "Grip qui lâche tout seul" lowered from 120 to 60 ms: in Gunman Contract, the measured spurious releases last 29 ms at most (32 masked over two sessions, none longer). A real release now takes effect twice as fast. Games whose delay was already set keep their value.
+
 ## 0.6.1
 
 - **Grip that lets go by itself** (new switch on a game's page, off by default): with Pimax's OpenXR runtime, the grip button sometimes releases for a fraction of a second. The hand opens and closes, and in Gunman Contract, for example, the weapon drops. SteadyGrip now ignores releases shorter than 120 ms (adjustable from 30 to 400 ms in the advanced settings). A real release takes effect after that delay.

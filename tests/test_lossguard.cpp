@@ -277,7 +277,7 @@ int main() {
 			if (out < GripFilter::kPress && openedAt < 0) openedAt = t;
 		}
 		std::printf("     vrai relâchement : main ouverte après %.0f ms\n", (openedAt - t0) * 1000);
-		check(openedAt > 0 && openedAt - t0 >= 0.120 && openedAt - t0 < 0.140, "vrai relâchement accepté après 120 ms");
+		check(openedAt > 0 && openedAt - t0 >= 0.120 && openedAt - t0 < 0.140, "vrai relâchement accepté après le délai (120 ms ici)");
 		// Valeur analogique qui oscille autour de 0,5 : la valeur rendue reste la plus forte vue.
 		GripFilter g;
 		GripFilter::Stats st2;

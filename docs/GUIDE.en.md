@@ -101,7 +101,7 @@ For each loss, the layer records where the hand was as seen from the headset (ca
 
 With Pimax's OpenXR runtime, the grip button sometimes releases for a fraction of a second while you squeeze it: the hand opens and closes, and the weapon may drop (Gunman Contract, for example). For these games, turn on **"Grip qui lâche tout seul"** on the game's page.
 
-- SteadyGrip then corrects the game's actions bound to the grip (`/input/squeeze`): a release shorter than the delay (120 ms by default, 30 to 400 ms in Réglages avancés › Bouton grip) is ignored, and the value returned to the game stays that of the squeezed grip.
+- SteadyGrip then corrects the game's actions bound to the grip (`/input/squeeze`): a release shorter than the delay (60 ms by default, 30 to 400 ms in Réglages avancés › Bouton grip) is ignored, and the value returned to the game stays that of the squeezed grip.
 - A real release takes effect after that delay.
 - At each summary, the log shows how many spurious releases were masked and the longest one. If it reports "relâchements suivis d'un nouvel appui en moins de 0,4 s" (releases followed by a new press within 0.4 s), increase the delay a little.
 - Off by default: in games where the grip works fine, there is nothing to correct.

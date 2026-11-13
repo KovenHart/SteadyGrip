@@ -93,7 +93,7 @@ struct FilterSettings {
 	// Bouton grip des manettes Pimax qui se relâche par instants (la main s'ouvre et se referme) :
 	// un relâchement plus court que gripHoldMs est ignoré.
 	bool gripFix = false;
-	double gripHoldMs = 120;
+	double gripHoldMs = 60;     // relâchements parasites mesurés (Gunman Contract) : 29 ms au plus
 };
 
 // Anti-rebond d'un bouton grip (une action du jeu, pour une main). Le grip est « serré » au-dessus de kPress ;
