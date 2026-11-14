@@ -146,7 +146,7 @@ The layer writes every settings change to the log (`%LOCALAPPDATA%\SteadyGrip\St
 
 **CrossFire: Sierra Squad** (tested with a Pimax Dream Air SLAM):
 - **Automatic weapon shouldering: off**, and **automatic scope aiming: off**. They bring the controller right under the headset, where the cameras barely see it (31–37 losses per minute closer than 25 cm, versus under 2 at 25–45 cm).
-- Confirmed over two 10-minute sessions: with a sniper rifle, automatic scope aiming and the weapon against the face, the right hand lost tracking 6.9 times per minute and spent 53 % of the time untracked; without automatic aiming, controllers in front of the headset (sniper rifle, assault rifle and handgun), 0.6 times per minute and 5 % of the time, with no losses near the headset.
+- Confirmed over two 10-minute sessions with the same weapons (sniper rifle, assault rifle): with automatic scope aiming and the weapon against the face, the right hand lost tracking 6.9 times per minute and spent 53 % of the time untracked; without automatic aiming, controllers in front of the headset, 0.6 times per minute and 5 % of the time, with no losses near the headset.
 - **Hold the weapon slightly in front of your face** rather than pressed under the headset: in the same session, the right hand went from 37 losses in 181 s to 6 in 145 s.
 - **Second-hand influence on aiming: 50 %** (80 % by default).
 

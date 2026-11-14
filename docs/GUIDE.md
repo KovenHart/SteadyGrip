@@ -181,7 +181,7 @@ Pour comparer deux réglages : jouez au moins une minute avec chacun, en faisant
 
 **CrossFire: Sierra Squad** (testé avec un Pimax Dream Air SLAM) :
 - **Épaulement automatique de l'arme : désactivé**, et **visée automatique des lunettes (sniper) : désactivée.** Elles ramènent la manette juste sous le casque, là où les caméras ne la voient presque plus (31 à 37 pertes par minute à moins de 25 cm du casque, contre moins de 2 entre 25 et 45 cm).
-- Confirmé sur deux parties de 10 minutes : au fusil de précision avec la visée automatique et l'arme au visage, la main droite perdait le suivi 6,9 fois par minute et passait 53 % du temps hors suivi ; sans visée automatique, manettes devant le casque (fusil de précision, fusil d'assaut et arme de poing), 0,6 fois par minute et 5 % du temps, sans aucune perte près du casque.
+- Confirmé sur deux parties de 10 minutes avec les mêmes armes (fusil de précision, fusil d'assaut) : avec la visée automatique et l'arme au visage, la main droite perdait le suivi 6,9 fois par minute et passait 53 % du temps hors suivi ; sans visée automatique, manettes devant le casque, 0,6 fois par minute et 5 % du temps, sans aucune perte près du casque.
 - **Tenir l'arme un peu en avant du visage**, plutôt que plaquée sous le casque : sur la même session, la main droite est passée de 37 pertes en 181 s à 6 en 145 s.
 - **Impact de la seconde main sur la visée : 50 %** (80 % par défaut). L'arme est orientée surtout par la main qui tient la poignée, dont l'orientation (gyroscope) est très stable. 30 % marche aussi ; 50 % a donné le meilleur ressenti.
 
