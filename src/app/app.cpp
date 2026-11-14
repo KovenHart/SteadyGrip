@@ -10,6 +10,7 @@
 #include "Json.h"
 #include "Library.h"
 #include "PimaxReader.h"
+#include "TrackBeeper.h"
 
 #include <shellapi.h>
 #include <shobjidl.h>
@@ -47,6 +48,7 @@ ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_web;
 SharedMemory g_shared;
 PimaxReader g_reader;
+TrackBeeper g_beeper;
 std::string g_lastState;   // dernier état envoyé à la page (on n'envoie que les changements)
 std::string g_runningId;   // jeu en cours déjà traité (ajout automatique à la bibliothèque)
 
@@ -249,11 +251,15 @@ std::string HandJson(const SharedHand& h, bool fresh) {
 	return "{\"state\":" + JsonStr(state) + ",\"text\":" + JsonStr(text) + "}";
 }
 
+bool BeepsWanted() { return IniGet(L"Sons", L"BipsSuivi", 0) != 0; }
+
 bool RecordingWanted() { return IniGet(L"Diagnostic", L"EnregistrerPoses", 0) != 0; }
 
 std::string BuildState() {
 	SharedBlock* b = g_shared.block();
 	const bool recording = RecordingWanted();
+	const bool beeps = BeepsWanted();
+	g_beeper.setEnabled(beeps);
 	InterlockedExchange(&b->recordPoses, recording ? 1 : 0);
 	const int layer = LayerStatus();
 	const int source = b->trackSource;
@@ -306,6 +312,7 @@ std::string BuildState() {
 	out += ",\"pimaxVersion\":" + JsonStr(std::string(b->pimaxVersion, strnlen(b->pimaxVersion, sizeof(b->pimaxVersion))));
 	out += ",\"running\":" + (running ? "{\"id\":" + JsonStr(runId) + ",\"appName\":" + JsonStr(runApp) + "}" : std::string("null"));
 	out += ",\"hands\":" + hands + ",\"tremorPct\":" + std::to_string(tremorPct) + ",\"caught\":" + std::to_string(caught);
+	out += ",\"beeps\":" + JsonBool(beeps);
 	out += ",\"recording\":" + JsonBool(recording) + ",\"recordedFrames\":" + std::to_string(b->recordedFrames);
 	out += ",\"recordFile\":" + JsonStr(std::string(b->recordFile, strnlen(b->recordFile, sizeof(b->recordFile))));
 	out += ",\"defaultSummary\":" + JsonStr(Summary("default")) + ",\"games\":" + games + "}";
@@ -440,6 +447,8 @@ void OnMessage(const std::string& text) {
 		SetShortcut(InStartMenu, true);
 	} else if (cmd == "shortcut") SetShortcut(m["where"].text == "desktop" ? OnDesktop : InStartMenu, m["value"].truthy());
 	else if (cmd == "uninstall") DoInstall(false);
+	else if (cmd == "beeps") { IniSet(L"Sons", L"BipsSuivi", m["value"].truthy() ? 1 : 0); g_beeper.setEnabled(m["value"].truthy()); }
+	else if (cmd == "beepTest") g_beeper.test();
 	else if (cmd == "record") IniSet(L"Diagnostic", L"EnregistrerPoses", m["value"].truthy() ? 1 : 0);
 	else if (cmd == "getGame") { SendGame(id); return; }
 	else if (cmd == "set") { ApplySetting(id, m["key"].text, m["value"]); SendGame(id); }
@@ -619,6 +628,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmd, int show) {
 		return 1;
 	}
 	g_reader.start(g_shared.block()); // lecture de l'état de suivi Pimax (lecture seule)
+	g_beeper.setEnabled(BeepsWanted());
+	g_beeper.start(g_shared.block()); // bips de suivi (option)
 
 	WNDCLASSEXW wc{ sizeof(wc) };
 	wc.lpfnWndProc = WndProc;
@@ -643,6 +654,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmd, int show) {
 		TranslateMessage(&m);
 		DispatchMessageW(&m);
 	}
+	g_beeper.stop();
 	g_reader.stop();
 	CoUninitialize();
 	if (mutex) CloseHandle(mutex);

@@ -101,9 +101,9 @@ For each loss, the layer records where the hand was as seen from the headset (ca
 
 Pimax sometimes shows a controller as tracked while getting its position wrong: few LEDs visible (weapon against the face while aiming), infrared reflection. The hand then slides away from the body, and jumps back when Pimax catches up. Since a hand can't be farther from the neck than the arm's reach (advanced settings, 85 cm by default), SteadyGrip holds the displayed position at that reach, plus a 5 cm margin. The error is reduced, not removed: in a real case with a sniper rifle, Pimax put the hand 1.25 m from the neck, and the largest displayed gap drops from 84 to 54 cm. These positions aren't learned by the arm model. The log says "main suivie hors de portée du bras". Always on when "Contenir les pertes" is; if your hand gets held with the arm stretched out, increase the arm's reach.
 
-### Learned arm model (experimental)
+### Learned arm model
 
-Réglages avancés › Manette hors du champ › **"Modèle de bras appris sur tes gestes"** (Advanced settings › Controller out of view › Arm model learned from your movements), off by default. During a Pimax reinitialization, instead of rotating the hand around an assumed elbow, SteadyGrip looks up the postures it has already seen with the controller oriented the same way (and the head tilted the same way), and puts the hand where it was then, relative to the torso.
+Réglages avancés › Manette hors du champ › **"Modèle de bras appris sur tes gestes"** (Advanced settings › Controller out of view › Arm model learned from your movements), on by default since 0.6.6 (it needs "Modèle de bras pendant les réinitialisations", also on). During a Pimax reinitialization, instead of rotating the hand around an assumed elbow, SteadyGrip looks up the postures it has already seen with the controller oriented the same way (and the head tilted the same way), and puts the hand where it was then, relative to the torso.
 
 - The model learns while the controller is tracked, one frame in three, even when the option is off. It keeps the last 5000 postures per controller pose, about 3½ minutes of tracked play: it follows your recent habits rather than piling everything up, since that gives the best results when replaying your sessions. It needs about one minute of play to be ready; until then, the elbow model is used.
 - It describes your body and your way of playing, not the game: one file for all games, `%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`, read when a game starts and saved when it closes. Deleting it starts over.
@@ -129,6 +129,14 @@ With Pimax's OpenXR runtime, the grip button sometimes releases for a fraction o
 - A real release takes effect after that delay.
 - At each summary, the log shows how many spurious releases were masked and the longest one. If it reports "relâchements suivis d'un nouvel appui en moins de 0,4 s" (releases followed by a new press within 0.4 s), increase the delay a little.
 - Off by default: in games where the grip works fine, there is nothing to correct.
+
+## Beeps when a controller leaves the cameras' view
+
+Paramètres › Sons › **"Bip quand une manette sort du champ des caméras"** (Settings › Sounds › Beep when a controller leaves the cameras' view), off by default. A low beep when Pimax loses a controller, a high beep when it finds it again. The sound comes from the controller's side (left or right), so it isn't mistaken for the game's vibrations or sounds. The "Écouter" (Listen) button plays the four beeps.
+
+- Only while a game runs with SteadyGrip, and for losses longer than 0.2 s: Pimax's very short flickers don't beep. The high beep waits for 0.15 s of regained tracking, and only follows a low beep.
+- Played by the SteadyGrip app, not the game, on Windows' default audio output: if the headset audio isn't the default output, the beeps come out elsewhere.
+- Useful to learn where your blind spots are: at the low beep, bring the controller back in front of you.
 
 ## Recording your movements (diagnostics)
 

@@ -363,6 +363,7 @@ int main() {
 		check(maxStep < 0.03, "aucun saut d'une image à l'autre");
 		// Option désactivée : le modèle continue d'apprendre, mais le modèle du coude est utilisé.
 		FilterSettings off;
+		off.learnedArm = false;
 		LossGuard h;
 		h.setLearnedArm(&arm);
 		h.apply(t, TrackTracking, aimP, aimQ, aimP, true, hp, hq, false, {}, {}, off); t += dt;

@@ -82,7 +82,7 @@ struct FilterSettings {
 	double maxLostDriftM = 0.30;   // pendant une perte, déplacement maximal accepté
 	double maxReachM = 0.85;       // distance maximale manette - buste (portée de bras)
 	bool armModel = true;          // pendant une réinitialisation, la main tourne autour du coude
-	bool learnedArm = false;       // ... ou suit le modèle de bras appris sur les gestes du joueur (s'il a assez appris)
+	bool learnedArm = true;        // ... ou suit le modèle de bras appris sur les gestes du joueur (s'il a assez appris)
 	double forearmM = 0.30;        // longueur de l'avant-bras (modèle de bras)
 	double releaseMinMs = 60;      // retour au champ : 60 ms + 400 ms par mètre d'écart, 300 ms au plus
 	double releaseMsPerM = 400;

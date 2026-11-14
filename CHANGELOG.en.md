@@ -4,6 +4,11 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.6
+
+- **Learned arm model on by default**: it is the combination that gave the best results on every measured session. No longer marked experimental. A game whose settings were already saved keeps its choice.
+- **Tracking beeps** ("Sons" in Paramètres, off by default): a low beep when Pimax loses a controller for more than 0.2 s, a high beep when it finds it again, from the controller's side. Played by the app, only in game. "Écouter" (Listen) button.
+
 ## 0.6.5
 
 - **"Tracked" hand out of arm's reach**: when Pimax shows a controller as tracked but puts it farther from the neck than the arm's reach (tracking error, often while aiming with the weapon against the face), the displayed position is held at that reach (+5 cm). Real case with a sniper rifle: largest displayed gap down from 84 to 54 cm. The log records each episode.

@@ -4,6 +4,11 @@
 
 Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
+## 0.6.6
+
+- **Modèle de bras appris activé par défaut** : c'est la combinaison qui a donné les meilleurs résultats sur toutes les parties mesurées. Il n'est plus marqué expérimental. Un jeu dont les réglages ont déjà été enregistrés garde son choix.
+- **Bips de suivi** (Paramètres › Sons, désactivé par défaut) : bip grave quand Pimax perd une manette plus de 0,2 s, bip aigu quand il la retrouve, du côté de la manette. Joués par l'application, seulement en jeu. Bouton « Écouter ».
+
 ## 0.6.5
 
 - **Main « suivie » hors de portée du bras** : quand Pimax affiche une manette comme suivie mais la place plus loin du cou que la portée du bras (erreur de suivi, souvent en visée arme contre le visage), la position affichée est bloquée à cette portée (+5 cm). Cas réel au fusil de précision : écart maximal affiché de 84 cm ramené à 54 cm. Le journal note chaque épisode.

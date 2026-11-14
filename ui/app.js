@@ -150,7 +150,7 @@ function renderAdvanced() {
       '<div class="ends"><span>' + it.left + '</span><span>' + it.right + '</span></div><p>' + it.help + '</p></div>').join('') +
     (g.title === 'Manette hors du champ'
       ? '<label class="check-row"><input type="checkbox" data-action="armModel"' + (s.armModel ? ' checked' : '') + '> Modèle de bras pendant les réinitialisations de Pimax (sinon : arme figée)</label>' +
-        '<label class="check-row"><input type="checkbox" data-action="learnedArm"' + (s.learnedArm ? ' checked' : '') + (s.armModel ? '' : ' disabled') + '> Modèle de bras appris sur tes gestes (expérimental) : prêt après environ une minute de jeu</label>' : '') +
+        '<label class="check-row"><input type="checkbox" data-action="learnedArm"' + (s.learnedArm ? ' checked' : '') + (s.armModel ? '' : ' disabled') + '> Modèle de bras appris sur tes gestes : prêt après environ une minute de jeu</label>' : '') +
     '</section>').join('');
   $('#view').innerHTML =
     '<div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:16px">' +
@@ -163,6 +163,14 @@ function renderAdvanced() {
 function shortcutRow(where, title, text, on) {
   return '<div class="toggle-row"><div><div class="t">' + title + '</div><div class="d">' + text + '</div></div>' +
     '<button type="button" class="switch" role="switch" aria-checked="' + !!on + '" aria-label="' + esc(title) + '" data-action="shortcut" data-where="' + where + '"></button></div>';
+}
+
+function beepPanel() {
+  const on = !!(state && state.beeps);
+  return '<section class="panel" style="padding-top:10px;padding-bottom:6px"><h2 style="margin-top:8px">Sons</h2>' +
+    '<div class="toggle-row"><div><div class="t">Bip quand une manette sort du champ des caméras</div><div class="d">Bip grave quand Pimax perd une manette, bip aigu quand il la retrouve, du côté de la manette concernée. Seulement en jeu, pour les pertes de plus de 0,2 s. Son sur la sortie audio par défaut de Windows.</div></div>' +
+    '<button type="button" class="switch" role="switch" aria-checked="' + on + '" aria-label="Bip quand une manette sort du champ des caméras" data-action="beeps"></button></div>' +
+    '<p class="note" style="margin:0 0 8px"><button type="button" class="btn ghost" data-action="beepTest">Écouter</button></p></section>';
 }
 
 function recordPanel() {
@@ -194,6 +202,7 @@ function renderSettings() {
         '<div class="row"><button type="button" class="btn primary" data-action="install">Installer</button><button type="button" class="btn ghost danger" data-action="uninstall">Désinstaller</button></div></section>' +
       '<section class="panel"><h2>Pimax</h2><p class="note" style="margin:0">' + esc(state && state.pimaxVersion ? state.pimaxVersion : 'Service Pimax non détecté.') + '</p>' +
         '<p class="note" style="margin:0">SteadyGrip lit l\'état de suivi des manettes dans le service Pimax, sans rien y modifier. C\'est pour cela qu\'il demande les droits d\'administrateur.</p></section>' +
+      beepPanel() +
       recordPanel() +
       '<p class="note">SteadyGrip ' + esc(state ? state.version : '') + ' · réglages et journal dans %LOCALAPPDATA%\\SteadyGrip</p>' +
     '</div>';
@@ -265,6 +274,8 @@ document.addEventListener('click', (e) => {
   else if (a === 'setImage') send('setImage', { id: game.id });
   else if (a === 'remove') { if (confirm('Retirer « ' + game.name + ' » de tes jeux ? Ses réglages seront supprimés.')) { send('remove', { id: game.id }); game = null; go('library'); } }
   else if (a === 'install') send('install');
+  else if (a === 'beeps') send('beeps', { value: el.getAttribute('aria-checked') !== 'true' });
+  else if (a === 'beepTest') send('beepTest', {});
   else if (a === 'record') send('record', { value: el.getAttribute('aria-checked') !== 'true' });
   else if (a === 'shortcut') send('shortcut', { where: el.dataset.where, value: el.getAttribute('aria-checked') !== 'true' });
   else if (a === 'uninstall') send('uninstall');
@@ -348,10 +359,11 @@ function mock(msg) {
     tremorPct: 73, caught: 6, defaultSummary: 'Équilibrée',
     games: [{ id: 'steam:1', name: 'Jeu d\'exemple', image: '', own: true, summary: 'Très stable · armes à deux mains', running: true }]
   });
-  const settings = mock.set || (mock.set = { level: 3, lossGuard: true, twoHands: true, armModel: true, learnedArm: false, stillTauMs: 100, movingTauMs: 30, teleportBlendMs: 140, orientSmoothing: 75, maxLostDriftCm: 30, maxReachCm: 85, gripFix: false, gripHoldMs: 120 });
+  const settings = mock.set || (mock.set = { level: 3, lossGuard: true, twoHands: true, armModel: true, learnedArm: true, stillTauMs: 100, movingTauMs: 30, teleportBlendMs: 140, orientSmoothing: 75, maxLostDriftCm: 30, maxReachCm: 85, gripFix: false, gripHoldMs: 120 });
   setTimeout(() => {
     if (msg.cmd === 'ready') onMessage(s);
     else if (msg.cmd === 'theme') { s.theme = msg.value; onMessage(s); }
+    else if (msg.cmd === 'beeps') { s.beeps = msg.value; onMessage(s); }
     else if (msg.cmd === 'record') { s.recording = msg.value; if (msg.value) { s.recordFile = 'poses_20261114_201500.csv'; s.recordedFrames = 41250; } onMessage(s); }
     else if (msg.cmd === 'shortcut') { s[msg.where === 'desktop' ? 'desktop' : 'startMenu'] = msg.value; onMessage(s); }
     else if (msg.cmd === 'getGame' || msg.cmd === 'set') {

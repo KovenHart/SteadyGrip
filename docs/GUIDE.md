@@ -124,9 +124,9 @@ Si l'application compagnon n'est pas lancée, ou pas en administrateur, la couch
 
 Il arrive que Pimax affiche une manette comme suivie alors qu'il se trompe de position : peu de LED visibles (arme contre le visage, en visée), reflet infrarouge. La main glisse alors loin du corps, puis saute à la bonne place quand Pimax se rattrape. Une main ne pouvant pas être plus loin du cou que la portée du bras (Réglages avancés, 85 cm par défaut), SteadyGrip bloque la position affichée à cette portée, plus 5 cm de marge. L'erreur n'est pas supprimée, seulement réduite : dans un cas réel au fusil de précision, Pimax a placé la main à 1,25 m du cou, et l'écart maximal affiché passe de 84 à 54 cm. Ces positions ne sont pas apprises par le modèle de bras. Le journal note « main suivie hors de portée du bras ». Toujours actif quand « Contenir les pertes » l'est ; si ta main est bloquée bras tendu, augmente la portée du bras.
 
-### Modèle de bras appris (expérimental)
+### Modèle de bras appris
 
-Réglages avancés › Manette hors du champ › **« Modèle de bras appris sur tes gestes »**, désactivé par défaut. Pendant une réinitialisation de Pimax, au lieu de faire tourner la main autour d'un coude supposé, SteadyGrip cherche dans les postures déjà vues celles où la manette était orientée de la même façon (et la tête inclinée de même), et place la main là où elle était alors, par rapport au buste.
+Réglages avancés › Manette hors du champ › **« Modèle de bras appris sur tes gestes »**, activé par défaut depuis la 0.6.6 (il demande « Modèle de bras pendant les réinitialisations », coché lui aussi). Pendant une réinitialisation de Pimax, au lieu de faire tourner la main autour d'un coude supposé, SteadyGrip cherche dans les postures déjà vues celles où la manette était orientée de la même façon (et la tête inclinée de même), et place la main là où elle était alors, par rapport au buste.
 
 - Le modèle apprend pendant que la manette est suivie, une image sur trois, y compris quand l'option est désactivée. Il garde les 5000 dernières postures par pose de manette, environ 3 min 30 de jeu suivi : il suit tes habitudes récentes plutôt que de tout accumuler, car c'est ce qui donne les meilleurs résultats en rejouant tes parties. Il faut environ une minute de jeu pour qu'il soit prêt ; avant, le modèle du coude est utilisé.
 - Il décrit ton corps et ta façon de jouer, pas le jeu : un seul fichier pour tous les jeux, `%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`, lu au lancement d'un jeu et enregistré à sa fermeture. Le supprimer repart de zéro.
@@ -152,6 +152,14 @@ Avec le runtime OpenXR de Pimax, le bouton grip se relâche parfois une fraction
 - Un vrai relâchement est pris en compte avec ce délai de retard.
 - Le journal indique, à chaque bilan, le nombre de relâchements parasites masqués et le plus long. S'il signale des « relâchements suivis d'un nouvel appui en moins de 0,4 s », augmentez un peu le délai.
 - Désactivé par défaut : dans les jeux où le grip fonctionne bien, il n'y a rien à corriger.
+
+## Bips quand une manette sort du champ
+
+Paramètres › Sons › **« Bip quand une manette sort du champ des caméras »**, désactivé par défaut. Un bip grave quand Pimax perd une manette, un bip aigu quand il la retrouve. Le son vient du côté de la manette concernée (gauche ou droite), pour ne pas le confondre avec les vibrations ou les sons du jeu. Le bouton « Écouter » fait entendre les quatre bips.
+
+- Seulement pendant qu'un jeu tourne avec SteadyGrip, et pour les pertes de plus de 0,2 s : les clignotements très courts de Pimax ne bipent pas. Le bip aigu attend 0,15 s de suivi retrouvé, et ne suit qu'un bip grave.
+- Joué par l'application SteadyGrip, pas par le jeu, sur la sortie audio par défaut de Windows : si le son du casque n'est pas la sortie par défaut, les bips sortent ailleurs.
+- Utile pour apprendre où sont tes angles morts : au bip grave, ramène la manette devant toi.
 
 ## Enregistrer ses mouvements (diagnostic)
 
