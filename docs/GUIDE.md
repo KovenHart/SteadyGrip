@@ -127,15 +127,16 @@ Réglages avancés › Manette hors du champ › **« Modèle de bras appris sur
 - Le modèle apprend pendant que la manette est suivie, une image sur trois, y compris quand l'option est désactivée. Il garde environ les 14 dernières minutes de jeu suivi par pose de manette. Il faut environ une minute de jeu pour qu'il soit prêt ; avant, le modèle du coude est utilisé.
 - Il décrit ton corps et ta façon de jouer, pas le jeu : un seul fichier pour tous les jeux, `%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`, lu au lancement d'un jeu et enregistré à sa fermeture. Le supprimer repart de zéro.
 - Pas de saut : l'estimation part de la position affichée et rejoint la posture apprise en environ une seconde.
-- Mesuré hors jeu en rejouant trois parties enregistrées (CrossFire deux fois, Gunman Contract), chacune avec un modèle appris sur les deux autres ; écart à la reprise après une réinitialisation de moins de 5 s :
+- Mesuré hors jeu en rejouant quatre parties enregistrées, chacune avec un modèle appris sur les trois autres ; écart à la reprise après une réinitialisation (jusqu'à 60 s : une visée à la lunette peut tenir la main contre le casque une demi-minute) :
 
   | Partie | Modèle du coude : médiane / 10 % les pires | Modèle appris : médiane / 10 % les pires |
   |---|---|---|
-  | CrossFire (1) | 18 cm / 70 cm | 11 cm / 23 cm |
+  | CrossFire (1) | 18 cm / 70 cm | 12 cm / 24 cm |
   | Gunman Contract | 27 cm / 61 cm | 13 cm / 27 cm |
-  | CrossFire (2) | 11 cm / 55 cm | 12 cm / 35 cm |
+  | CrossFire (2), arme à deux mains | 12 cm / 26 cm | 10 cm / 26 cm |
+  | CrossFire (3), fusil de précision | 14 cm / 49 cm | 11 cm / 30 cm |
 
-  Le gain le plus sûr porte sur les grosses erreurs (la main retrouvée à plus de 50 cm de l'endroit affiché) ; en médiane, il dépend de la partie : nul quand le modèle du coude tombe déjà juste.
+  Le modèle appris fait au moins aussi bien partout ; le gain le plus net porte sur les grosses erreurs.
 - Limite : une main qui soutient une arme à deux mains dépend surtout de l'autre main. Pour celle-là, l'option « arme à deux mains » reste la plus juste.
 - Le journal indique, à chaque réinitialisation, « (modèle appris) » ou « (modèle du coude : pas encore assez appris) ».
 

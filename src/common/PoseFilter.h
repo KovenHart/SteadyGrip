@@ -456,8 +456,8 @@ private:
 // (orientation de la manette et inclinaison de la tête, dans le repère du buste) -> position de la main dans ce
 // repère. Pendant une réinitialisation de Pimax, seule l'orientation (IMU) reste fiable : la position est
 // estimée par les 15 postures mémorisées les plus proches (moyenne pondérée par l'inverse de la distance).
-// Mesuré hors jeu sur trois parties (replay_eval, modèle appris sur les deux autres) : écart au retour
-// de 23 à 35 cm au lieu de 55 à 70 cm pour les 10 % de pertes les pires ; en médiane 11 à 13 cm au lieu de 11 à 27 cm.
+// Mesuré hors jeu sur quatre parties (replay_eval, modèle appris sur les trois autres) : écart au retour
+// de 10 à 13 cm en médiane au lieu de 12 à 27 cm ; 24 à 30 cm au lieu de 26 à 70 cm pour les 10 % les pires.
 class LearnedArm {
 public:
 	static constexpr size_t kMax = 20000;    // environ 14 minutes de jeu suivi (une image sur trois)

@@ -104,15 +104,16 @@ Réglages avancés › Manette hors du champ › **"Modèle de bras appris sur t
 - The model learns while the controller is tracked, one frame in three, even when the option is off. It keeps about the last 14 minutes of tracked play per controller pose. It needs about one minute of play to be ready; until then, the elbow model is used.
 - It describes your body and your way of playing, not the game: one file for all games, `%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`, read when a game starts and saved when it closes. Deleting it starts over.
 - No jump: the estimate starts from the displayed position and reaches the learned posture in about a second.
-- Measured offline by replaying three recorded sessions (CrossFire twice, Gunman Contract), each with a model learned on the other two; gap at recovery after a reinitialization shorter than 5 s:
+- Measured offline by replaying four recorded sessions, each with a model learned on the other three; gap at recovery after a reinitialization (up to 60 s: aiming through a scope can keep the hand against the headset for half a minute):
 
   | Session | Elbow model: median / worst 10 % | Learned model: median / worst 10 % |
   |---|---|---|
-  | CrossFire (1) | 18 cm / 70 cm | 11 cm / 23 cm |
+  | CrossFire (1) | 18 cm / 70 cm | 12 cm / 24 cm |
   | Gunman Contract | 27 cm / 61 cm | 13 cm / 27 cm |
-  | CrossFire (2) | 11 cm / 55 cm | 12 cm / 35 cm |
+  | CrossFire (2), two-handed weapon | 12 cm / 26 cm | 10 cm / 26 cm |
+  | CrossFire (3), sniper rifle | 14 cm / 49 cm | 11 cm / 30 cm |
 
-  The most reliable gain is on large errors (the hand found more than 50 cm from where it was shown); the median gain depends on the session: none when the elbow model is already right.
+  The learned model does at least as well everywhere; the clearest gain is on large errors.
 - Limit: a hand supporting a two-handed weapon mostly depends on the other hand. For that one, the "two-handed weapon" option remains the most accurate.
 - The log says, at each reinitialization, "(modèle appris)" (learned model) or "(modèle du coude : pas encore assez appris)" (elbow model: not learned enough yet).
 

@@ -1,7 +1,7 @@
 // Rejoue un enregistrement de mouvements (Paramètres › Diagnostic) dans LossGuard, avec le modèle du coude
 // puis avec le modèle de bras appris, et compare l'écart au retour de chaque perte avec réinitialisation.
-// Seules les réinitialisations de moins de 5 s sont comptées (au-delà : manette posée, menus).
-// Usage : replay_eval poses_....csv [partie_precedente.csv]  (la seconde, si donnée, sert d'apprentissage préalable)
+// Seules les réinitialisations de moins de 60 s sont comptées (au-delà : manette posée, menus).
+// Usage : replay_eval poses_....csv [partie_precedente.csv] [durée max en s, 60 par défaut]  (la seconde, si donnée, sert d'apprentissage préalable)
 #include "../src/common/PoseFilter.h"
 #include <algorithm>
 #include <cstdio>
@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 using namespace sg;
+static double g_maxHold = 60.0;  // secondes ; 3e argument pour changer (une visée à la lunette peut durer 30 s)
 struct Row { double t; int hand, state; V3 p, h; Q q, hq; };
 static std::vector<double> run(const std::vector<Row>& rows, const std::vector<Row>& pre, int hand, bool learned, size_t& used) {
 	FilterSettings s;
@@ -33,8 +34,8 @@ static std::vector<double> run(const std::vector<Row>& rows, const std::vector<R
 		if (ph == LossGuard::Holding && last != LossGuard::Holding && g.usedLearnedArm()) used++;
 		if (ph == LossGuard::Holding && !hadHold) { hadHold = true; holdT0 = r.t; }
 		if (ph == LossGuard::Releasing && last != LossGuard::Releasing) {
-			// Les réinitialisations de plus de 5 s (manette posée, menus) ne sont pas comptées.
-			if (hadHold && r.t - holdT0 < 5.0) gaps.push_back(g.lastReturnGapM() * 100);
+			// Les réinitialisations trop longues (manette posée, menus) ne sont pas comptées.
+			if (hadHold && r.t - holdT0 < g_maxHold) gaps.push_back(g.lastReturnGapM() * 100);
 			hadHold = false;
 		}
 		last = ph;
@@ -67,6 +68,7 @@ static double q(std::vector<double> v, double f) {
 }
 int main(int argc, char** argv) {
 	if (argc < 2) { std::printf("usage : replay_eval poses.csv [precedente.csv]\n"); return 1; }
+	if (argc > 3) g_maxHold = std::atof(argv[3]);
 	std::vector<Row> rows, pre;
 	if (!load(argv[1], rows) || (argc > 2 && !load(argv[2], pre))) { std::printf("fichier introuvable\n"); return 1; }
 	std::vector<double> all[2];

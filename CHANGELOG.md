@@ -6,7 +6,7 @@ Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
 ## 0.6.4
 
-- **Modèle de bras appris** (expérimental, Réglages avancés › Manette hors du champ, désactivé par défaut) : pendant une réinitialisation de Pimax, la main est placée là où elle se trouvait dans les postures déjà vues avec la même orientation de manette, au lieu de tourner autour d'un coude supposé. Le modèle apprend en continu, est commun à tous les jeux et est gardé d'une partie à l'autre (`%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`). En rejouant trois parties enregistrées (CrossFire deux fois, Gunman Contract) : pour les 10 % de pertes les pires, écart à la reprise de 23 à 35 cm au lieu de 55 à 70 cm ; en médiane, 11 à 13 cm au lieu de 11 à 27 cm.
+- **Modèle de bras appris** (expérimental, Réglages avancés › Manette hors du champ, désactivé par défaut) : pendant une réinitialisation de Pimax, la main est placée là où elle se trouvait dans les postures déjà vues avec la même orientation de manette, au lieu de tourner autour d'un coude supposé. Le modèle apprend en continu, est commun à tous les jeux et est gardé d'une partie à l'autre (`%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`). En rejouant quatre parties enregistrées (CrossFire trois fois, Gunman Contract) : écart à la reprise de 10 à 13 cm en médiane au lieu de 12 à 27 cm, et de 24 à 30 cm au lieu de 26 à 70 cm pour les 10 % de pertes les pires.
 - `replay_eval.exe` rejoue un enregistrement de mouvements et compare les deux modèles de bras.
 
 ## 0.6.3

@@ -6,7 +6,7 @@ What's new in each SteadyGrip version, most recent first.
 
 ## 0.6.4
 
-- **Learned arm model** (experimental, "Modèle de bras appris" in Réglages avancés › Manette hors du champ, off by default): during a Pimax reinitialization, the hand is placed where it was in the postures already seen with the same controller orientation, instead of rotating around an assumed elbow. The model keeps learning, is shared by all games and kept between sessions (`%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`). Replaying three recorded sessions (CrossFire twice, Gunman Contract): for the worst 10 % of losses, gap at recovery of 23 to 35 cm instead of 55 to 70 cm; median 11 to 13 cm instead of 11 to 27 cm.
+- **Learned arm model** (experimental, "Modèle de bras appris" in Réglages avancés › Manette hors du champ, off by default): during a Pimax reinitialization, the hand is placed where it was in the postures already seen with the same controller orientation, instead of rotating around an assumed elbow. The model keeps learning, is shared by all games and kept between sessions (`%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`). Replaying four recorded sessions (CrossFire three times, Gunman Contract): gap at recovery of 10 to 13 cm median instead of 12 to 27 cm, and 24 to 30 cm instead of 26 to 70 cm for the worst 10 % of losses.
 - `replay_eval.exe` replays a movement recording and compares both arm models.
 
 ## 0.6.3
