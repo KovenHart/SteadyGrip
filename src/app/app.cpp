@@ -177,7 +177,7 @@ const char* LevelName(int level) {
 
 std::string SettingsJson(int32_t preset, const FilterSettings& s) {
 	return "{\"level\":" + std::to_string(LevelOf(preset)) + ",\"lossGuard\":" + JsonBool(s.lossGuard) +
-		",\"twoHands\":" + JsonBool(s.coupleMode == CoupleGrips) + ",\"armModel\":" + JsonBool(s.armModel) +
+		",\"twoHands\":" + JsonBool(s.coupleMode == CoupleGrips) + ",\"armModel\":" + JsonBool(s.armModel) + ",\"learnedArm\":" + JsonBool(s.learnedArm) +
 		",\"stillTauMs\":" + JsonNum(s.stillTauMs) + ",\"movingTauMs\":" + JsonNum(s.movingTauMs) +
 		",\"teleportBlendMs\":" + JsonNum(s.teleportBlendMs) + ",\"orientSmoothing\":" + JsonNum(s.orientSmoothing) +
 		",\"maxLostDriftCm\":" + JsonNum(std::round(s.maxLostDriftM * 100)) + ",\"maxReachCm\":" + JsonNum(std::round(s.maxReachM * 100)) +
@@ -375,6 +375,7 @@ void ApplySetting(const std::string& id, const std::string& key, const JsonValue
 		s.lossGuard = keep.lossGuard;
 		s.coupleMode = keep.coupleMode;
 		s.armModel = keep.armModel;
+		s.learnedArm = keep.learnedArm;
 		s.maxLostDriftM = keep.maxLostDriftM;
 		s.maxReachM = keep.maxReachM;
 		s.gripFix = keep.gripFix;
@@ -384,6 +385,7 @@ void ApplySetting(const std::string& id, const std::string& key, const JsonValue
 	} else if (key == "lossGuard") s.lossGuard = v.truthy();
 	else if (key == "twoHands") s.coupleMode = v.truthy() ? CoupleGrips : CoupleNever;
 	else if (key == "armModel") s.armModel = v.truthy();
+	else if (key == "learnedArm") s.learnedArm = v.truthy();
 	else if (key == "gripFix") s.gripFix = v.truthy();
 	else if (key == "gripHoldMs") s.gripHoldMs = std::clamp(v.num(), 30.0, 400.0);
 	else if (key == "maxLostDriftCm") s.maxLostDriftM = std::clamp(v.num(), 5.0, 60.0) / 100.0;

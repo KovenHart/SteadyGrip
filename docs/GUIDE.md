@@ -120,6 +120,17 @@ Si l'application compagnon n'est pas lancée, ou pas en administrateur, la couch
 
 - **Contrôler l'état Pimax par les recalages (0.5, retiré en 0.5.1).** L'idée : ignorer une « perte » pendant laquelle la pose reçoit encore des recalages. Sur la pose brute de TrackProbe, il n'y en a aucun pendant les réinitialisations. Mais en jeu, la pose de la poignée est décalée du centre de la manette : quand on tourne le poignet, sa position bouge alors que Pimax a figé la position. Ces mouvements passaient pour des recalages, si bien que presque toutes les réinitialisations étaient ignorées puis reprises (165 fois sur une session de 10 minutes). La main alternait entre la pose figée de Pimax et le modèle de bras, d'où des dérives visibles.
 
+### Modèle de bras appris (expérimental)
+
+Réglages avancés › Manette hors du champ › **« Modèle de bras appris sur tes gestes »**, désactivé par défaut. Pendant une réinitialisation de Pimax, au lieu de faire tourner la main autour d'un coude supposé, SteadyGrip cherche dans les postures déjà vues celles où la manette était orientée de la même façon (et la tête inclinée de même), et place la main là où elle était alors, par rapport au buste.
+
+- Le modèle apprend pendant que la manette est suivie, une image sur trois, y compris quand l'option est désactivée. Il garde environ les 14 dernières minutes de jeu suivi par pose de manette. Il faut environ une minute de jeu pour qu'il soit prêt ; avant, le modèle du coude est utilisé.
+- Il décrit ton corps et ta façon de jouer, pas le jeu : un seul fichier pour tous les jeux, `%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`, lu au lancement d'un jeu et enregistré à sa fermeture. Le supprimer repart de zéro.
+- Pas de saut : l'estimation part de la position affichée et rejoint la posture apprise en environ une seconde.
+- Mesuré hors jeu en rejouant deux parties enregistrées (CrossFire 5 min, Gunman Contract 4 min), écart à la reprise après une réinitialisation : 9 à 13 cm en médiane au lieu de 18 à 27 cm avec le modèle du coude, et 21 à 24 cm au lieu de 61 à 70 cm pour les 10 % de pertes les pires, avec un modèle appris sur l'autre partie. Appris seulement pendant la partie elle-même, la médiane baisse autant mais les premières pertes ne profitent pas encore du modèle.
+- Limite : une main qui soutient une arme à deux mains dépend surtout de l'autre main. Pour celle-là, l'option « arme à deux mains » reste la plus juste.
+- Le journal indique, à chaque réinitialisation, « (modèle appris) » ou « (modèle du coude : pas encore assez appris) ».
+
 ## Grip qui lâche tout seul
 
 Avec le runtime OpenXR de Pimax, le bouton grip se relâche parfois une fraction de seconde alors qu'on le serre : la main s'ouvre et se referme, et l'arme peut tomber (Gunman Contract, par exemple). Pour ces jeux, activez **« Grip qui lâche tout seul »** sur la page du jeu.

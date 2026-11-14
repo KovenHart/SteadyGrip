@@ -149,7 +149,8 @@ function renderAdvanced() {
       '<input id="adv-' + it.key + '" type="range" min="' + it.min + '" max="' + it.max + '" value="' + Math.round(s[it.key]) + '" data-key="' + it.key + '" data-unit="' + it.unit + '">' +
       '<div class="ends"><span>' + it.left + '</span><span>' + it.right + '</span></div><p>' + it.help + '</p></div>').join('') +
     (g.title === 'Manette hors du champ'
-      ? '<label class="check-row"><input type="checkbox" data-action="armModel"' + (s.armModel ? ' checked' : '') + '> Modèle de bras pendant les réinitialisations de Pimax (sinon : arme figée)</label>' : '') +
+      ? '<label class="check-row"><input type="checkbox" data-action="armModel"' + (s.armModel ? ' checked' : '') + '> Modèle de bras pendant les réinitialisations de Pimax (sinon : arme figée)</label>' +
+        '<label class="check-row"><input type="checkbox" data-action="learnedArm"' + (s.learnedArm ? ' checked' : '') + (s.armModel ? '' : ' disabled') + '> Modèle de bras appris sur tes gestes (expérimental) : prêt après environ une minute de jeu</label>' : '') +
     '</section>').join('');
   $('#view').innerHTML =
     '<div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:16px">' +
@@ -306,6 +307,7 @@ document.addEventListener('change', (e) => {
   if (!game) return;
   if (e.target.dataset.key) send('set', { id: game.id, key: e.target.dataset.key, value: Number(e.target.value) });
   else if (e.target.dataset.action === 'armModel') send('set', { id: game.id, key: 'armModel', value: e.target.checked });
+  else if (e.target.dataset.action === 'learnedArm') send('set', { id: game.id, key: 'learnedArm', value: e.target.checked });
 });
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').hidden) closeAdd(); });
@@ -346,7 +348,7 @@ function mock(msg) {
     tremorPct: 73, caught: 6, defaultSummary: 'Équilibrée',
     games: [{ id: 'steam:1', name: 'Jeu d\'exemple', image: '', own: true, summary: 'Très stable · armes à deux mains', running: true }]
   });
-  const settings = mock.set || (mock.set = { level: 3, lossGuard: true, twoHands: true, armModel: true, stillTauMs: 100, movingTauMs: 30, teleportBlendMs: 140, orientSmoothing: 75, maxLostDriftCm: 30, maxReachCm: 85, gripFix: false, gripHoldMs: 120 });
+  const settings = mock.set || (mock.set = { level: 3, lossGuard: true, twoHands: true, armModel: true, learnedArm: false, stillTauMs: 100, movingTauMs: 30, teleportBlendMs: 140, orientSmoothing: 75, maxLostDriftCm: 30, maxReachCm: 85, gripFix: false, gripHoldMs: 120 });
   setTimeout(() => {
     if (msg.cmd === 'ready') onMessage(s);
     else if (msg.cmd === 'theme') { s.theme = msg.value; onMessage(s); }

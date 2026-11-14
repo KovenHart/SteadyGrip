@@ -146,6 +146,7 @@ struct StreamState {
 	uint64_t posTracked = 0;
 	// Pertes signalées par le service Pimax
 	LossGuard guard;
+	bool armSet = false;             // modèle de bras appris attaché à guard
 	OrientSmoother orient;           // stabilisation de l'orientation (visée)
 	int lastGuardPhase = 0;
 	int trackState = 0;
@@ -359,6 +360,60 @@ struct PoseRecorder {
 	}
 } g_rec;
 
+// Modèles de bras appris (voir LearnedArm), un par pose de manette (« /user/hand/left/input/grip/pose »...).
+// Ils décrivent le corps et la façon de jouer du joueur, pas le jeu : un seul fichier pour tous les jeux,
+// %LOCALAPPDATA%\SteadyGrip\modeles\bras.bin, lu au lancement du jeu et écrit à sa fermeture.
+// Ils apprennent même quand l'option est désactivée, pour être prêts quand on l'active.
+std::map<std::string, LearnedArm> g_arms;
+bool g_armsLoaded = false;
+constexpr char kArmMagic[8] = { 'S', 'G', 'B', 'R', 'A', 'S', '0', '1' };
+
+std::wstring ArmFile() { return DataDir() + L"\\modeles\\bras.bin"; }
+
+void LoadArms() {
+	if (g_armsLoaded) return;
+	g_armsLoaded = true;
+	FILE* f = nullptr;
+	_wfopen_s(&f, ArmFile().c_str(), L"rb");
+	if (!f) { Log("Modèle de bras appris : aucun fichier, apprentissage depuis zéro\n"); return; }
+	char magic[8];
+	uint32_t n = 0;
+	bool ok = fread(magic, 8, 1, f) == 1 && std::memcmp(magic, kArmMagic, 8) == 0 && fread(&n, 4, 1, f) == 1 && n < 64;
+	for (uint32_t i = 0; ok && i < n; i++) {
+		uint32_t len = 0;
+		ok = fread(&len, 4, 1, f) == 1 && len < 256;
+		std::string key(len, '\0');
+		ok = ok && (len == 0 || fread(&key[0], 1, len, f) == len);
+		LearnedArm a;
+		ok = ok && a.load(f);
+		if (ok) {
+			Log("Modèle de bras appris %s : %zu postures\n", key.c_str(), a.size());
+			g_arms[key] = std::move(a);
+		}
+	}
+	fclose(f);
+	if (!ok) { g_arms.clear(); Log("Modèle de bras appris : fichier illisible, apprentissage depuis zéro\n"); }
+}
+
+void SaveArms() {
+	if (g_arms.empty()) return;
+	CreateDirectoryW((DataDir() + L"\\modeles").c_str(), nullptr);
+	const std::wstring path = ArmFile(), tmp = path + L".tmp";
+	FILE* f = nullptr;
+	_wfopen_s(&f, tmp.c_str(), L"wb");
+	if (!f) return;
+	const uint32_t n = (uint32_t)g_arms.size();
+	bool ok = fwrite(kArmMagic, 8, 1, f) == 1 && fwrite(&n, 4, 1, f) == 1;
+	for (const auto& [key, a] : g_arms) {
+		const uint32_t len = (uint32_t)key.size();
+		ok = ok && fwrite(&len, 4, 1, f) == 1 && (len == 0 || fwrite(key.data(), 1, len, f) == len) && a.save(f);
+	}
+	ok = fclose(f) == 0 && ok;
+	if (ok && MoveFileExW(tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+		for (const auto& [key, a] : g_arms) Log("Modèle de bras appris %s enregistré : %zu postures\n", key.c_str(), a.size());
+	} else DeleteFileW(tmp.c_str());
+}
+
 std::string SettingsDesc(const FilterSettings& s, int32_t preset) {
 	static const char* presets[] = { "Désactivé", "Léger", "Moyen", "Fort", "Personnalisé" };
 	static const char* couple[] = { "automatique", "toujours", "jamais", "deux grips serrés" };
@@ -367,9 +422,9 @@ std::string SettingsDesc(const FilterSettings& s, int32_t preset) {
 	char b[480];
 	snprintf(b, sizeof(b),
 		"préréglage %s, actif %d, lissage à l'arrêt %.0f ms, en mouvement %.0f ms, téléportations %.0f ms, orientation %.0f, "
-		"contenir les pertes %d, modèle de bras %d, dérive max %.0f cm, portée %.0f cm, liaison des mains %s, correction du grip %s",
+		"contenir les pertes %d, modèle de bras %d%s, dérive max %.0f cm, portée %.0f cm, liaison des mains %s, correction du grip %s",
 		preset >= 0 && preset <= 4 ? presets[preset] : "?", s.enabled ? 1 : 0, s.stillTauMs, s.movingTauMs, s.teleportBlendMs, s.orientSmoothing,
-		s.lossGuard ? 1 : 0, s.armModel ? 1 : 0, s.maxLostDriftM * 100, s.maxReachM * 100,
+		s.lossGuard ? 1 : 0, s.armModel ? 1 : 0, s.learnedArm ? " (appris)" : "", s.maxLostDriftM * 100, s.maxReachM * 100,
 		s.coupleMode >= 0 && s.coupleMode <= 3 ? couple[s.coupleMode] : "?", grip);
 	return b;
 }
@@ -664,6 +719,11 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 	StreamState& st = g_streams[{ space, baseSpace }];
 	st.hand = asi.hand;
 	st.path = asi.path;
+	if (!st.armSet) {
+		st.armSet = true;
+		LoadArms();
+		st.guard.setLearnedArm(&g_arms[st.path.empty() ? (st.hand ? "main droite" : "main gauche") : st.path]);
+	}
 	if (!asi.logged) {
 		asi.logged = true;
 		Log("Première localisation de l'espace %p (main %d) : pose %s, vitesses %s\n", (void*)space, asi.hand,
@@ -797,6 +857,8 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 			char extra[224] = "";
 			if (coupled) snprintf(extra, sizeof(extra), ", liée à l'autre main");
 			else if (phase == 2 && !g_settings.armModel) snprintf(extra, sizeof(extra), " (désactivé : arme figée)");
+			else if (phase == 2 && st.guard.usedLearnedArm()) snprintf(extra, sizeof(extra), " (modèle appris)");
+			else if (phase == 2 && g_settings.learnedArm) snprintf(extra, sizeof(extra), " (modèle du coude : pas encore assez appris)");
 			else if (phase == 3) snprintf(extra, sizeof(extra), ", écart à la reprise %.0f cm, retour en %.0f ms", st.guard.lastReturnGapM() * 100.0, st.guard.lastReturnMs());
 			if (lossStart)
 				snprintf(extra + strlen(extra), sizeof(extra) - strlen(extra), " ; main à %.0f° %s, %.0f° %s du regard, %.0f cm", std::fabs(st.lossAz),
@@ -1159,6 +1221,7 @@ XrResult XRAPI_CALL SG_xrDestroyInstance(XrInstance instance) {
 		g_gripFixLogged = false;
 		g_rec.close();
 		g_streams.clear();
+		SaveArms();
 		g_viewSpaces.clear();
 	}
 	Log("Instance détruite\n");

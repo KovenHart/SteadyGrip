@@ -317,6 +317,67 @@ int main() {
 		check(f.stats().refinements > 100, "les secondes demandes sont comptées");
 	}
 
+	std::printf("11. Modèle de bras appris\n");
+	{
+		// Joueur de synthèse : deux habitudes. Visée (manette vers l'avant, main devant le visage) et repos
+		// (manette vers le bas, main le long du corps). Le casque reste immobile.
+		const V3 hp{ 0, 1.6, 0 }, neck{ 0, 1.5, 0.08 };
+		const Q hq{};
+		const Q aimQ{}, restQ = qexp(V3{ -1.5708, 0, 0 });
+		const V3 aimP = neck + V3{ 0.05, -0.05, -0.35 }, restP = neck + V3{ -0.20, -0.70, 0.0 };
+		auto blend = [](const V3& a, const V3& b, double w) { return a + (b - a) * w; };
+		const double dt = 1.0 / 72;
+		FilterSettings s;
+		s.learnedArm = true;
+		LearnedArm arm;
+		LossGuard g;
+		g.setLearnedArm(&arm);
+		double t = 0;
+		// Moins d'une minute de jeu : pas encore prêt, le modèle du coude est gardé.
+		for (int i = 0; i < 200; i++, t += dt) g.apply(t, TrackTracking, aimP, aimQ, aimP, true, hp, hq, false, {}, {}, s);
+		g.apply(t, TrackIniting, aimP, aimQ, aimP, true, hp, hq, false, {}, {}, s); t += dt;
+		check(!g.usedLearnedArm() && g.phase() == LossGuard::Holding, "pas assez appris : modèle du coude");
+		for (int i = 0; i < 20; i++, t += dt) g.apply(t, TrackTracking, aimP, aimQ, aimP, true, hp, hq, false, {}, {}, s);
+		// Apprentissage : le joueur passe de la visée au repos et inversement, pendant 3 minutes.
+		for (int i = 0; i < 72 * 180; i++, t += dt) {
+			const double w = 0.5 - 0.5 * std::cos(i * dt * 1.3);
+			const Q q = qexp(V3{ -1.5708 * w, 0, 0 });
+			const V3 p = blend(aimP, restP, w);
+			g.apply(t, TrackTracking, p, q, p, true, hp, hq, false, {}, {}, s);
+		}
+		check(arm.ready(), "prêt après une minute de jeu suivi");
+		// Perte en visée, puis réinitialisation pendant que le joueur baisse l'arme : Pimax ne sait plus rien
+		// de la position (il la laisse sur place), seule l'orientation suit.
+		V3 last = g.apply(t, TrackTracking, aimP, aimQ, aimP, true, hp, hq, false, {}, {}, s); t += dt;
+		double maxStep = 0;
+		V3 out;
+		for (int i = 0; i < 144; i++, t += dt) {
+			const double w = std::min(1.0, i / 72.0);
+			const Q q = qexp(V3{ -1.5708 * w, 0, 0 });
+			out = g.apply(t, i < 10 ? TrackLost : TrackIniting, aimP, q, aimP, true, hp, hq, false, {}, {}, s);
+			maxStep = std::max(maxStep, (out - last).norm());
+			last = out;
+		}
+		check(g.usedLearnedArm(), "modèle appris utilisé pendant la réinitialisation");
+		check((out - restP).norm() < 0.06, "l'arme baissée est retrouvée au repos, le long du corps");
+		check(maxStep < 0.03, "aucun saut d'une image à l'autre");
+		// Option désactivée : le modèle continue d'apprendre, mais le modèle du coude est utilisé.
+		FilterSettings off;
+		LossGuard h;
+		h.setLearnedArm(&arm);
+		h.apply(t, TrackTracking, aimP, aimQ, aimP, true, hp, hq, false, {}, {}, off); t += dt;
+		h.apply(t, TrackIniting, aimP, aimQ, aimP, true, hp, hq, false, {}, {}, off);
+		check(!h.usedLearnedArm(), "option décochée : modèle du coude");
+		// Sauvegarde et relecture.
+		FILE* f = std::tmpfile();
+		const bool saved = arm.save(f);
+		std::rewind(f);
+		LearnedArm back;
+		const bool loaded = back.load(f);
+		std::fclose(f);
+		check(saved && loaded && back.size() == arm.size() && (back.predict(restQ, hq) - arm.predict(restQ, hq)).norm() < 1e-9, "modèle enregistré puis relu à l'identique");
+	}
+
 	std::printf("%s\n", fails ? "ÉCHEC" : "OK");
 	return fails;
 }

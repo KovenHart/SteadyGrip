@@ -50,6 +50,7 @@ The interface can be opened in a browser (`ui/index.html`): without the app, it 
 | `test_app.exe` | JSON messages between interface and app, Steam file parsing |
 | `bench.exe`, `orient_eval.exe`, `motion_eval.exe` (in `tests/`) | replay a TrackProbe session (CSV) to measure smoothing |
 | `unity_eval.exe s` / `u` | simulates one request per frame, or two requests per display time (Unity), and measures jerks |
+| `replay_eval.exe poses.csv [previous.csv]` | replays a movement recording (Paramètres › Diagnostic) with the elbow model then the learned model (pre-trained on the second session if given), and compares the gap at recovery |
 
 ## Version and distribution
 

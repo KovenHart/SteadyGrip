@@ -16,7 +16,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <deque>
+#include <vector>
 
 namespace sg {
 
@@ -80,6 +82,7 @@ struct FilterSettings {
 	double maxLostDriftM = 0.30;   // pendant une perte, déplacement maximal accepté
 	double maxReachM = 0.85;       // distance maximale manette - buste (portée de bras)
 	bool armModel = true;          // pendant une réinitialisation, la main tourne autour du coude
+	bool learnedArm = false;       // ... ou suit le modèle de bras appris sur les gestes du joueur (s'il a assez appris)
 	double forearmM = 0.30;        // longueur de l'avant-bras (modèle de bras)
 	double releaseMinMs = 60;      // retour au champ : 60 ms + 400 ms par mètre d'écart, 300 ms au plus
 	double releaseMsPerM = 400;
@@ -449,6 +452,86 @@ private:
 	Q q_;
 };
 
+// Modèle de bras appris sur les gestes du joueur. Pendant que la manette est suivie, on mémorise des couples
+// (orientation de la manette et inclinaison de la tête, dans le repère du buste) -> position de la main dans ce
+// repère. Pendant une réinitialisation de Pimax, seule l'orientation (IMU) reste fiable : la position est
+// estimée par les 15 postures mémorisées les plus proches (moyenne pondérée par l'inverse de la distance).
+// Mesuré hors jeu sur deux parties (CrossFire, Gunman Contract) : écart médian au retour 8 à 10 cm
+// au lieu de 13 à 17 cm, et 19 à 21 cm au lieu de 50 à 67 cm pour les 10 % de pertes les pires.
+class LearnedArm {
+public:
+	static constexpr size_t kMax = 20000;    // environ 14 minutes de jeu suivi (une image sur trois)
+	static constexpr size_t kMin = 1500;     // environ une minute : en dessous, on garde le modèle du coude
+	static constexpr int kK = 15;
+	struct Sample { float f[7]; float p[3]; };
+
+	static void features(const Q& ql, const Q& hl, float out[7]) {
+		const V3 f = rot(ql, V3{ 0, 0, -1 }), u = rot(ql, V3{ 0, 1, 0 }), hf = rot(hl, V3{ 0, 0, -1 });
+		out[0] = (float)f.x; out[1] = (float)f.y; out[2] = (float)f.z;
+		out[3] = (float)u.x; out[4] = (float)u.y; out[5] = (float)u.z;
+		out[6] = (float)(0.5 * hf.y);
+	}
+	// ql, hl : orientations de la manette et de la tête dans le repère du buste ; local : position de la main.
+	void add(const Q& ql, const Q& hl, const V3& local) {
+		if (tick_++ % 3) return;
+		Sample sm;
+		features(ql, hl, sm.f);
+		sm.p[0] = (float)local.x; sm.p[1] = (float)local.y; sm.p[2] = (float)local.z;
+		if (data_.size() < kMax) data_.push_back(sm);
+		else { data_[next_] = sm; next_ = (next_ + 1) % kMax; }
+	}
+	bool ready() const { return data_.size() >= kMin; }
+	size_t size() const { return data_.size(); }
+	V3 predict(const Q& ql, const Q& hl) const {
+		float f[7];
+		features(ql, hl, f);
+		float bestD[kK];
+		size_t bestI[kK];
+		int n = 0;
+		for (size_t i = 0; i < data_.size(); i++) {
+			const float* g = data_[i].f;
+			float d = 0;
+			for (int k = 0; k < 7; k++) d += (g[k] - f[k]) * (g[k] - f[k]);
+			if (n == kK && d >= bestD[kK - 1]) continue;
+			int j = n < kK ? n++ : kK - 1;
+			while (j > 0 && bestD[j - 1] > d) { bestD[j] = bestD[j - 1]; bestI[j] = bestI[j - 1]; j--; }
+			bestD[j] = d;
+			bestI[j] = i;
+		}
+		V3 sum;
+		double wsum = 0;
+		for (int j = 0; j < n; j++) {
+			const double w = 1.0 / std::max(1e-6, std::sqrt((double)bestD[j]));
+			const float* p = data_[bestI[j]].p;
+			sum = sum + V3{ p[0], p[1], p[2] } * w;
+			wsum += w;
+		}
+		return wsum > 0 ? sum * (1.0 / wsum) : V3{};
+	}
+	bool save(FILE* f) const {
+		const uint32_t n = (uint32_t)data_.size(), nx = (uint32_t)next_;
+		return fwrite(&n, 4, 1, f) == 1 && fwrite(&nx, 4, 1, f) == 1 && (n == 0 || fwrite(data_.data(), sizeof(Sample), n, f) == n);
+	}
+	bool load(FILE* f) {
+		uint32_t n = 0, nx = 0;
+		if (fread(&n, 4, 1, f) != 1 || fread(&nx, 4, 1, f) != 1 || n > kMax || nx >= std::max<uint32_t>(n, 1)) return false;
+		std::vector<Sample> d(n);
+		if (n && fread(d.data(), sizeof(Sample), n, f) != n) return false;
+		data_.swap(d);
+		next_ = nx;
+		return true;
+	}
+
+private:
+	static V3 rot(const Q& q, const V3& v) {
+		const Q r = q * Q{ 0, v.x, v.y, v.z } * q.conj();
+		return { r.x, r.y, r.z };
+	}
+	std::vector<Sample> data_;
+	size_t next_ = 0;
+	uint32_t tick_ = 0;
+};
+
 // Stabilisation de l'orientation pour la visée (filtre « One Euro ») : très lissée quand la manette
 // est presque immobile (tremblement de visée), quasiment pas dès qu'elle tourne vite (aucun retard
 // sensible sur les mouvements). strength : 0 = désactivé, 100 = maximum.
@@ -551,6 +634,9 @@ public:
 	enum Phase { Normal = 0, Contained = 1, Holding = 2, Releasing = 3 };
 
 	Phase phase() const { return phase_; }
+	// Modèle de bras appris à utiliser et à enrichir (partagé par les flux d'une même manette ; nul : aucun).
+	void setLearnedArm(LearnedArm* a) { arm_ = a; }
+	bool usedLearnedArm() const { return armUsed_; }
 	bool coupled() const { return coupled_; }
 	bool lastRigid() const { return coupleAllowed_; }
 	int diagSamples() const { return diagN_; }
@@ -580,6 +666,7 @@ public:
 		const V3 local = body_.toLocal(p);
 		V3 outLocal = local;
 		if (state == TrackTracking) {
+			if (arm_ && phase_ == Normal) arm_->add(body_.toLocal(q), body_.toLocal(hq), body_.toLocal(rawP));
 			if (partnerValid && s.coupleMode == CoupleAuto) hist_.push_back({ t, rotate(pq.conj(), p - pp) });
 			while (!hist_.empty() && hist_.front().t < t - s.rigidWindowS) hist_.pop_front();
 			if (phase_ == Contained || phase_ == Holding) startRelease(t, body_.toLocal(rawP), s);
@@ -593,6 +680,14 @@ public:
 		} else {
 			if (phase_ == Normal || phase_ == Releasing) { // début de la perte : on part de la dernière sortie
 				lostStart_ = lastOut_;
+				// Modèle appris : l'écart entre la main et la posture apprise est noté maintenant, avec la dernière
+				// position fiable (pendant la perte, la position donnée par Pimax dérive).
+				armUsed_ = false;
+				armReady_ = s.armModel && s.learnedArm && arm_ && arm_->ready();
+				if (armReady_) {
+					armOff_ = lastOut_ - arm_->predict(body_.toLocal(q), body_.toLocal(hq));
+					armT0_ = t;
+				}
 				coupled_ = false;
 				phase_ = Contained;
 				coupleAllowed_ = s.coupleMode == CoupleAlways || (s.coupleMode == CoupleAuto && rigid(t, s));
@@ -625,8 +720,18 @@ public:
 					anchor_ = lastOut_;
 					elbow_ = lastOut_ - rotate(ql, V3{ 0, 0, -s.forearmM });
 					coupled_ = false;
+					// Modèle appris : posture apprise + écart noté au début de la perte (qui s'efface en ~1 s).
+					// Le passage depuis la position affichée jusque-là est étalé (0,2 s), sans saut.
+					armUsed_ = armReady_ && s.armModel && s.learnedArm;
+					if (armUsed_) {
+						armJump_ = lastOut_ - (arm_->predict(ql, body_.toLocal(hq)) + armOff_ * std::exp(-(t - armT0_) / kArmBlendS));
+						armTj_ = t;
+					}
 				}
-				if (phase_ == Holding) outLocal = s.armModel ? elbow_ + rotate(ql, V3{ 0, 0, -s.forearmM }) : anchor_;
+				if (phase_ == Holding && armUsed_)
+					outLocal = arm_->predict(ql, body_.toLocal(hq)) + armOff_ * std::exp(-(t - armT0_) / kArmBlendS) +
+						armJump_ * std::exp(-(t - armTj_) / kArmJumpS);
+				else if (phase_ == Holding) outLocal = s.armModel ? elbow_ + rotate(ql, V3{ 0, 0, -s.forearmM }) : anchor_;
 				else outLocal = lostStart_ + clampLen(local - lostStart_, s.maxLostDriftM);
 			}
 			outLocal = clampLen(outLocal, s.maxReachM);
@@ -671,7 +776,12 @@ private:
 		phase_ = Releasing;
 	}
 
+	static constexpr double kArmBlendS = 1.0, kArmJumpS = 0.2;
 	struct RelSample { double t; V3 rel; };
+	LearnedArm* arm_ = nullptr;
+	bool armUsed_ = false, armReady_ = false;
+	V3 armOff_, armJump_;
+	double armT0_ = 0, armTj_ = 0;
 	BodyFrame body_;
 	std::deque<RelSample> hist_;
 	bool coupleAllowed_ = false, verdict_ = false, diagReused_ = false, coupled_ = false;

@@ -55,6 +55,9 @@ target_compile_options(orient_eval PRIVATE /utf-8)
 # Simulation du rythme de demandes de Unity (chaque heure d'affichage demandée deux fois) : unity_eval s | u
 add_executable(unity_eval tests/unity_eval.cpp)
 target_compile_options(unity_eval PRIVATE /utf-8)
+# Rejoue un enregistrement de mouvements et compare les modèles de bras : replay_eval poses.csv [precedente.csv]
+add_executable(replay_eval tests/replay_eval.cpp)
+target_compile_options(replay_eval PRIVATE /utf-8)
 
 foreach(t SteadyGrip SteadyGripApp)
   target_compile_options(${t} PRIVATE /utf-8 /W3)

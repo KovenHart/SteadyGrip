@@ -97,6 +97,17 @@ For each loss, the layer records where the hand was as seen from the headset (ca
 - **Predicting orientation to offset smoothing lag**: prediction reinjects the jitter; the gain is at most 0.06° at equal jitter.
 - **Checking Pimax's state against optical corrections** (0.5, removed in 0.5.1): in game, the grip pose is offset from the controller's center, so wrist rotation looked like corrections and almost every reinitialization was wrongly ignored.
 
+### Learned arm model (experimental)
+
+Réglages avancés › Manette hors du champ › **"Modèle de bras appris sur tes gestes"** (Advanced settings › Controller out of view › Arm model learned from your movements), off by default. During a Pimax reinitialization, instead of rotating the hand around an assumed elbow, SteadyGrip looks up the postures it has already seen with the controller oriented the same way (and the head tilted the same way), and puts the hand where it was then, relative to the torso.
+
+- The model learns while the controller is tracked, one frame in three, even when the option is off. It keeps about the last 14 minutes of tracked play per controller pose. It needs about one minute of play to be ready; until then, the elbow model is used.
+- It describes your body and your way of playing, not the game: one file for all games, `%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`, read when a game starts and saved when it closes. Deleting it starts over.
+- No jump: the estimate starts from the displayed position and reaches the learned posture in about a second.
+- Measured offline by replaying two recorded sessions (CrossFire 5 min, Gunman Contract 4 min), gap at recovery after a reinitialization: 9 to 13 cm median instead of 18 to 27 cm with the elbow model, and 21 to 24 cm instead of 61 to 70 cm for the worst 10 % of losses, with a model learned on the other session. Learned only during the session itself, the median drops as much, but the first losses don't benefit from the model yet.
+- Limit: a hand supporting a two-handed weapon mostly depends on the other hand. For that one, the "two-handed weapon" option remains the most accurate.
+- The log says, at each reinitialization, "(modèle appris)" (learned model) or "(modèle du coude : pas encore assez appris)" (elbow model: not learned enough yet).
+
 ## Grip that lets go by itself
 
 With Pimax's OpenXR runtime, the grip button sometimes releases for a fraction of a second while you squeeze it: the hand opens and closes, and the weapon may drop (Gunman Contract, for example). For these games, turn on **"Grip qui lâche tout seul"** on the game's page.

@@ -50,6 +50,7 @@ L'interface peut s'ouvrir dans un navigateur (`ui/index.html`) : sans l'applicat
 | `test_app.exe` | messages JSON entre l'interface et l'application, lecture des fichiers de Steam |
 | `bench.exe`, `orient_eval.exe`, `motion_eval.exe` (dans `tests/`) | rejouent une session TrackProbe (CSV) pour mesurer le lissage |
 | `unity_eval.exe s` / `u` | simule une demande par image, ou deux demandes par heure d'affichage (Unity), et mesure les à-coups |
+| `replay_eval.exe poses.csv [precedente.csv]` | rejoue un enregistrement de mouvements (Paramètres › Diagnostic) avec le modèle du coude puis le modèle appris (préappris sur la seconde partie si donnée), et compare l'écart à la reprise |
 
 ## Version et distribution
 
