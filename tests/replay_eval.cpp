@@ -1,5 +1,6 @@
 // Rejoue un enregistrement de mouvements (Paramètres › Diagnostic) dans LossGuard, avec le modèle du coude
 // puis avec le modèle de bras appris, et compare l'écart au retour de chaque perte avec réinitialisation.
+// Seules les réinitialisations de moins de 5 s sont comptées (au-delà : manette posée, menus).
 // Usage : replay_eval poses_....csv [partie_precedente.csv]  (la seconde, si donnée, sert d'apprentissage préalable)
 #include "../src/common/PoseFilter.h"
 #include <algorithm>
@@ -24,14 +25,16 @@ static std::vector<double> run(const std::vector<Row>& rows, const std::vector<R
 	std::vector<double> gaps;
 	int last = 0;
 	bool hadHold = false;
+	double holdT0 = 0;
 	for (const Row& r : rows) {
 		if (r.hand != hand) continue;
 		g.apply(r.t, r.state, r.p, r.q, r.p, true, r.h, r.hq, false, {}, {}, s);
 		const int ph = g.phase();
 		if (ph == LossGuard::Holding && last != LossGuard::Holding && g.usedLearnedArm()) used++;
-		if (ph == LossGuard::Holding) hadHold = true;
+		if (ph == LossGuard::Holding && !hadHold) { hadHold = true; holdT0 = r.t; }
 		if (ph == LossGuard::Releasing && last != LossGuard::Releasing) {
-			if (hadHold) gaps.push_back(g.lastReturnGapM() * 100);
+			// Les réinitialisations de plus de 5 s (manette posée, menus) ne sont pas comptées.
+			if (hadHold && r.t - holdT0 < 5.0) gaps.push_back(g.lastReturnGapM() * 100);
 			hadHold = false;
 		}
 		last = ph;
