@@ -4,6 +4,7 @@
 // jeu : aucun effet sur les images. Seulement pendant qu'un jeu tourne avec SteadyGrip.
 #include <windows.h>
 #include <mmsystem.h>
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
@@ -48,11 +49,11 @@ public:
 		std::memcpy(&out[0], "RIFF", 4); put32(4, 36 + dataBytes); std::memcpy(&out[8], "WAVEfmt ", 8);
 		put32(16, 16); put16(20, 1); put16(22, 2); put32(24, rate); put32(28, rate * 4); put16(32, 4); put16(34, 16);
 		std::memcpy(&out[36], "data", 4); put32(40, dataBytes);
-		const double near = 0.30, far = 0.08;   // volume du côté de la manette / de l'autre côté
+		const double sideVol = 0.30, otherVol = 0.08;   // volume du côté de la manette / de l'autre côté
 		for (uint32_t i = 0; i < n; i++) {
-			const double t = (double)i / rate, env = std::min({ 1.0, t / 0.01, (0.12 - t) / 0.03 });
-			const double v = std::sin(2 * 3.14159265358979 * freq * t) * std::max(0.0, env);
-			const int16_t l = (int16_t)(v * (hand == 0 ? near : far) * 32767), r = (int16_t)(v * (hand == 1 ? near : far) * 32767);
+			const double t = (double)i / rate, env = (std::min)((std::min)(1.0, t / 0.01), (0.12 - t) / 0.03);
+			const double v = std::sin(2 * 3.14159265358979 * freq * t) * (std::max)(0.0, env);
+			const int16_t l = (int16_t)(v * (hand == 0 ? sideVol : otherVol) * 32767), r = (int16_t)(v * (hand == 1 ? sideVol : otherVol) * 32767);
 			put16(44 + i * 4, (uint16_t)l);
 			put16(44 + i * 4 + 2, (uint16_t)r);
 		}
