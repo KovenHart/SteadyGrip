@@ -378,6 +378,44 @@ int main() {
 		check(saved && loaded && back.size() == arm.size() && (back.predict(restQ, hq) - arm.predict(restQ, hq)).norm() < 1e-9, "modèle enregistré puis relu à l'identique");
 	}
 
+	std::printf("12. Main « suivie » hors de portée du bras (erreur de Pimax)\n");
+	{
+		// Cas réel (CrossFire, fusil de précision) : Pimax dit suivre la main mais la fait glisser à 1,25 m du cou.
+		const V3 hp{ 0, 1.6, 0 }, neck{ 0, 1.5, 0.08 };
+		const Q hq{};
+		FilterSettings s;
+		LossGuard g;
+		LearnedArm arm;
+		g.setLearnedArm(&arm);
+		const double dt = 1.0 / 72;
+		double t = 0, worst = 0, inside = 0;
+		for (int i = 0; i < 200; i++, t += dt) {
+			const double d = 0.40 + 0.85 * std::min(1.0, i / 100.0);   // de 40 cm à 1,25 m devant le cou
+			const V3 p = neck + V3{ 0, 0, -d };
+			const V3 o = g.apply(t, TrackTracking, p, Q{}, p, true, hp, hq, false, {}, {}, s);
+			const double od = (o - neck).norm();
+			worst = std::max(worst, od);
+			if (d < 0.85) inside = std::max(inside, (o - p).norm());
+		}
+		check(worst <= s.maxReachM + 0.05 + 1e-9 && g.capped(), "position bloquée à la portée du bras (+5 cm)");
+		check(inside < 1e-9, "à portée du bras : aucune modification");
+		check(g.cappedFrames() > 0 && arm.size() < 200 / 3 + 1 - 30, "les positions hors de portée ne sont pas apprises");
+		// Fichier enregistré avec une mémoire plus grande (versions précédentes) : on garde les plus récentes.
+		FILE* f = std::tmpfile();
+		const uint32_t n = 7000, nx = 0;
+		std::fwrite(&n, 4, 1, f); std::fwrite(&nx, 4, 1, f);
+		for (uint32_t i = 0; i < n; i++) {
+			LearnedArm::Sample sm{};
+			sm.p[0] = (float)i;
+			std::fwrite(&sm, sizeof(sm), 1, f);
+		}
+		std::rewind(f);
+		LearnedArm back;
+		const bool ok = back.load(f);
+		std::fclose(f);
+		check(ok && back.size() == LearnedArm::kMax && back.predict(Q{}, Q{}).x > 7000 - LearnedArm::kMax, "ancien fichier plus grand : relu, postures récentes gardées");
+	}
+
 	std::printf("%s\n", fails ? "ÉCHEC" : "OK");
 	return fails;
 }

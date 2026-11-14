@@ -97,21 +97,25 @@ For each loss, the layer records where the hand was as seen from the headset (ca
 - **Predicting orientation to offset smoothing lag**: prediction reinjects the jitter; the gain is at most 0.06° at equal jitter.
 - **Checking Pimax's state against optical corrections** (0.5, removed in 0.5.1): in game, the grip pose is offset from the controller's center, so wrist rotation looked like corrections and almost every reinitialization was wrongly ignored.
 
+### "Tracked" hand out of arm's reach
+
+Pimax sometimes shows a controller as tracked while getting its position wrong: few LEDs visible (weapon against the face while aiming), infrared reflection. The hand then slides away from the body, and jumps back when Pimax catches up. Since a hand can't be farther from the neck than the arm's reach (advanced settings, 85 cm by default), SteadyGrip holds the displayed position at that reach, plus a 5 cm margin. The error is reduced, not removed: in a real case with a sniper rifle, Pimax put the hand 1.25 m from the neck, and the largest displayed gap drops from 84 to 54 cm. These positions aren't learned by the arm model. The log says "main suivie hors de portée du bras". Always on when "Contenir les pertes" is; if your hand gets held with the arm stretched out, increase the arm's reach.
+
 ### Learned arm model (experimental)
 
 Réglages avancés › Manette hors du champ › **"Modèle de bras appris sur tes gestes"** (Advanced settings › Controller out of view › Arm model learned from your movements), off by default. During a Pimax reinitialization, instead of rotating the hand around an assumed elbow, SteadyGrip looks up the postures it has already seen with the controller oriented the same way (and the head tilted the same way), and puts the hand where it was then, relative to the torso.
 
-- The model learns while the controller is tracked, one frame in three, even when the option is off. It keeps about the last 14 minutes of tracked play per controller pose. It needs about one minute of play to be ready; until then, the elbow model is used.
+- The model learns while the controller is tracked, one frame in three, even when the option is off. It keeps the last 5000 postures per controller pose, about 3½ minutes of tracked play: it follows your recent habits rather than piling everything up, since that gives the best results when replaying your sessions. It needs about one minute of play to be ready; until then, the elbow model is used.
 - It describes your body and your way of playing, not the game: one file for all games, `%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`, read when a game starts and saved when it closes. Deleting it starts over.
 - No jump: the estimate starts from the displayed position and reaches the learned posture in about a second.
 - Measured offline by replaying four recorded sessions, each with a model learned on the other three; gap at recovery after a reinitialization (up to 60 s: aiming through a scope can keep the hand against the headset for half a minute):
 
   | Session | Elbow model: median / worst 10 % | Learned model: median / worst 10 % |
   |---|---|---|
-  | CrossFire (1) | 18 cm / 70 cm | 12 cm / 24 cm |
-  | Gunman Contract | 27 cm / 61 cm | 13 cm / 27 cm |
-  | CrossFire (2), two-handed weapon | 12 cm / 26 cm | 10 cm / 26 cm |
-  | CrossFire (3), sniper rifle | 14 cm / 49 cm | 11 cm / 30 cm |
+  | CrossFire (1) | 18 cm / 70 cm | 10 cm / 19 cm |
+  | Gunman Contract | 27 cm / 61 cm | 14 cm / 28 cm |
+  | CrossFire (2), two-handed weapon | 12 cm / 26 cm | 9 cm / 15 cm |
+  | CrossFire (3), sniper rifle | 14 cm / 49 cm | 9 cm / 26 cm |
 
   The learned model does at least as well everywhere; the clearest gain is on large errors.
 - Limit: a hand supporting a two-handed weapon mostly depends on the other hand. For that one, the "two-handed weapon" option remains the most accurate.

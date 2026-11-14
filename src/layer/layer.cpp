@@ -147,6 +147,8 @@ struct StreamState {
 	// Pertes signalées par le service Pimax
 	LossGuard guard;
 	bool armSet = false;             // modèle de bras appris attaché à guard
+	bool lastCapped = false;         // main hors de portée du bras (bloquée)
+	double cappedSince = 0;
 	OrientSmoother orient;           // stabilisation de l'orientation (visée)
 	int lastGuardPhase = 0;
 	int trackState = 0;
@@ -363,7 +365,8 @@ struct PoseRecorder {
 // Modèles de bras appris (voir LearnedArm), un par pose de manette (« /user/hand/left/input/grip/pose »...).
 // Ils décrivent le corps et la façon de jouer du joueur, pas le jeu : un seul fichier pour tous les jeux,
 // %LOCALAPPDATA%\SteadyGrip\modeles\bras.bin, lu au lancement du jeu et écrit à sa fermeture.
-// Ils apprennent même quand l'option est désactivée, pour être prêts quand on l'active.
+// Ils apprennent même quand l'option est désactivée, pour être prêts quand on l'active. Chacun garde
+// les 5000 dernières postures (voir LearnedArm).
 std::map<std::string, LearnedArm> g_arms;
 bool g_armsLoaded = false;
 constexpr char kArmMagic[8] = { 'S', 'G', 'B', 'R', 'A', 'S', '0', '1' };
@@ -828,6 +831,17 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 		const bool gripsHeld = GripHeld(0) && GripHeld(1);
 		p = st.guard.apply(in.t, st.trackState, p, q, in.p, headOk, hp, hq, partnerOk, pp, pq, g_settings, gripsHeld);
 		const int phase = (int)st.guard.phase();
+		if (st.guard.capped() != st.lastCapped) {
+			st.lastCapped = st.guard.capped();
+			const double nowC = NowSeconds();
+			if (st.lastCapped) {
+				st.cappedSince = nowC;
+				Log("[%s] espace %p : main suivie hors de portée du bras (erreur de Pimax) : position bloquée à %.0f cm du cou\n",
+					st.hand == 0 ? "gauche" : "droite", (void*)space, (g_settings.maxReachM + 0.05) * 100.0);
+			} else
+				Log("[%s] espace %p : de nouveau à portée du bras après %.0f ms\n", st.hand == 0 ? "gauche" : "droite", (void*)space,
+					(nowC - st.cappedSince) * 1000.0);
+		}
 		const bool coupled = st.guard.coupled();
 		// Carte des pertes : position de la main vue du casque au début de chaque perte, et temps passé par zone.
 		const bool lossStart = (phase == 1 || phase == 2) && (st.lastGuardPhase == 0 || st.lastGuardPhase == 3);

@@ -4,6 +4,12 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.5
+
+- **"Tracked" hand out of arm's reach**: when Pimax shows a controller as tracked but puts it farther from the neck than the arm's reach (tracking error, often while aiming with the weapon against the face), the displayed position is held at that reach (+5 cm). Real case with a sniper rifle: largest displayed gap down from 84 to 54 cm. The log records each episode.
+- **Learned arm model**: memory reduced to the last 5000 postures (about 3½ minutes of play), which follows recent habits better. Replaying four sessions: 9 to 14 cm median gap at recovery, and 15 to 28 cm for the worst 10 % of losses (instead of 24 to 30 cm). 0.6.4 files are read back (most recent postures kept).
+- `replay_eval` counts reinitializations up to 60 s: with a sniper rifle, the hand stays against the headset for up to 30 s while aiming.
+
 ## 0.6.4
 
 - **Learned arm model** (experimental, "Modèle de bras appris" in Réglages avancés › Manette hors du champ, off by default): during a Pimax reinitialization, the hand is placed where it was in the postures already seen with the same controller orientation, instead of rotating around an assumed elbow. The model keeps learning, is shared by all games and kept between sessions (`%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`). Replaying four recorded sessions (CrossFire three times, Gunman Contract): gap at recovery of 10 to 13 cm median instead of 12 to 27 cm, and 24 to 30 cm instead of 26 to 70 cm for the worst 10 % of losses.

@@ -4,6 +4,12 @@
 
 Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
+## 0.6.5
+
+- **Main « suivie » hors de portée du bras** : quand Pimax affiche une manette comme suivie mais la place plus loin du cou que la portée du bras (erreur de suivi, souvent en visée arme contre le visage), la position affichée est bloquée à cette portée (+5 cm). Cas réel au fusil de précision : écart maximal affiché de 84 cm ramené à 54 cm. Le journal note chaque épisode.
+- **Modèle de bras appris** : mémoire ramenée aux 5000 dernières postures (environ 3 min 30 de jeu), qui suit mieux les habitudes récentes. En rejouant quatre parties : 9 à 14 cm d'écart médian au retour, et 15 à 28 cm pour les 10 % de pertes les pires (au lieu de 24 à 30 cm). Les fichiers de la 0.6.4 sont relus (postures les plus récentes gardées).
+- `replay_eval` compte les réinitialisations jusqu'à 60 s : au fusil de précision, la main reste contre le casque jusqu'à 30 s pendant la visée.
+
 ## 0.6.4
 
 - **Modèle de bras appris** (expérimental, Réglages avancés › Manette hors du champ, désactivé par défaut) : pendant une réinitialisation de Pimax, la main est placée là où elle se trouvait dans les postures déjà vues avec la même orientation de manette, au lieu de tourner autour d'un coude supposé. Le modèle apprend en continu, est commun à tous les jeux et est gardé d'une partie à l'autre (`%LOCALAPPDATA%\SteadyGrip\modeles\bras.bin`). En rejouant quatre parties enregistrées (CrossFire trois fois, Gunman Contract) : écart à la reprise de 10 à 13 cm en médiane au lieu de 12 à 27 cm, et de 24 à 30 cm au lieu de 26 à 70 cm pour les 10 % de pertes les pires.

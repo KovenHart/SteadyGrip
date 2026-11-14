@@ -457,10 +457,13 @@ private:
 // repère. Pendant une réinitialisation de Pimax, seule l'orientation (IMU) reste fiable : la position est
 // estimée par les 15 postures mémorisées les plus proches (moyenne pondérée par l'inverse de la distance).
 // Mesuré hors jeu sur quatre parties (replay_eval, modèle appris sur les trois autres) : écart au retour
-// de 10 à 13 cm en médiane au lieu de 12 à 27 cm ; 24 à 30 cm au lieu de 26 à 70 cm pour les 10 % les pires.
+// de 9 à 14 cm en médiane au lieu de 12 à 27 cm ; 14 à 32 cm au lieu de 26 à 70 cm pour les 10 % les pires.
 class LearnedArm {
 public:
-	static constexpr size_t kMax = 20000;    // environ 14 minutes de jeu suivi (une image sur trois)
+	// Mémoire : les 5000 dernières postures, environ 3 min 30 de jeu suivi (une image sur trois). Rejoué sur
+	// quatre parties, une mémoire courte (habitudes récentes) fait mieux qu'une longue : 10 cm de médiane et
+	// 14 à 32 cm pour les 10 % les pires, contre 10 à 13 cm et 24 à 30 cm avec 20000 postures.
+	static constexpr size_t kMax = 5000;
 	static constexpr size_t kMin = 1500;     // environ une minute : en dessous, on garde le modèle du coude
 	static constexpr int kK = 15;
 	struct Sample { float f[7]; float p[3]; };
@@ -514,11 +517,14 @@ public:
 	}
 	bool load(FILE* f) {
 		uint32_t n = 0, nx = 0;
-		if (fread(&n, 4, 1, f) != 1 || fread(&nx, 4, 1, f) != 1 || n > kMax || nx >= std::max<uint32_t>(n, 1)) return false;
+		if (fread(&n, 4, 1, f) != 1 || fread(&nx, 4, 1, f) != 1 || n > 1000000 || nx >= std::max<uint32_t>(n, 1)) return false;
 		std::vector<Sample> d(n);
 		if (n && fread(d.data(), sizeof(Sample), n, f) != n) return false;
+		// Remis dans l'ordre chronologique (anneau plein : la plus ancienne est en nx), puis on garde les plus récentes.
+		if (nx) std::rotate(d.begin(), d.begin() + nx, d.end());
+		if (d.size() > kMax) d.erase(d.begin(), d.end() - kMax);
 		data_.swap(d);
-		next_ = nx;
+		next_ = 0;
 		return true;
 	}
 
@@ -637,6 +643,9 @@ public:
 	// Modèle de bras appris à utiliser et à enrichir (partagé par les flux d'une même manette ; nul : aucun).
 	void setLearnedArm(LearnedArm* a) { arm_ = a; }
 	bool usedLearnedArm() const { return armUsed_; }
+	// Main suivie mais hors de portée du bras (erreur de Pimax) : position bloquée à la portée du bras.
+	bool capped() const { return capped_; }
+	uint64_t cappedFrames() const { return cappedFrames_; }
 	bool coupled() const { return coupled_; }
 	bool lastRigid() const { return coupleAllowed_; }
 	int diagSamples() const { return diagN_; }
@@ -666,7 +675,13 @@ public:
 		const V3 local = body_.toLocal(p);
 		V3 outLocal = local;
 		if (state == TrackTracking) {
-			if (arm_ && phase_ == Normal) arm_->add(body_.toLocal(q), body_.toLocal(hq), body_.toLocal(rawP));
+			// Main « suivie » hors de portée du bras : Pimax se trompe (peu de LED visibles, reflet). La position
+			// affichée est bloquée à la portée du bras (+5 cm de marge), et le modèle appris n'en apprend rien.
+			const V3 rawLocal = body_.toLocal(rawP);
+			const double reachLimit = s.maxReachM + kReachMarginM;
+			capped_ = local.norm() > reachLimit || rawLocal.norm() > reachLimit;
+			if (capped_) cappedFrames_++;
+			if (arm_ && phase_ == Normal && !capped_) arm_->add(body_.toLocal(q), body_.toLocal(hq), rawLocal);
 			if (partnerValid && s.coupleMode == CoupleAuto) hist_.push_back({ t, rotate(pq.conj(), p - pp) });
 			while (!hist_.empty() && hist_.front().t < t - s.rigidWindowS) hist_.pop_front();
 			if (phase_ == Contained || phase_ == Holding) startRelease(t, body_.toLocal(rawP), s);
@@ -676,8 +691,10 @@ public:
 				outLocal = relFrom_ + (local - relFrom_) * w;
 				if (a >= 1) phase_ = Normal;
 			}
+			outLocal = clampLen(outLocal, reachLimit);
 			coupled_ = false;
 		} else {
+			capped_ = false;
 			if (phase_ == Normal || phase_ == Releasing) { // début de la perte : on part de la dernière sortie
 				lostStart_ = lastOut_;
 				// Modèle appris : l'écart entre la main et la posture apprise est noté maintenant, avec la dernière
@@ -777,6 +794,9 @@ private:
 	}
 
 	static constexpr double kArmBlendS = 1.0, kArmJumpS = 0.2;
+	static constexpr double kReachMarginM = 0.05;  // main gauche le long du corps : jusqu'à 89 cm du cou mesurés
+	bool capped_ = false;
+	uint64_t cappedFrames_ = 0;
 	struct RelSample { double t; V3 rel; };
 	LearnedArm* arm_ = nullptr;
 	bool armUsed_ = false, armReady_ = false;
