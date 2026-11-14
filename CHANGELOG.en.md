@@ -4,6 +4,10 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.3
+
+- **Record movements** ("Enregistrer les mouvements" in Paramètres › Diagnostic, off by default): one CSV file per session with, every frame, the headset and both controllers' poses, the Pimax tracking state and the pose sent to the game. It will be used to develop an arm model learned from the player's own movements, to better guess where a controller is when it leaves the cameras' view.
+
 ## 0.6.2
 
 - **Motion smoothing fixed for Unity games** (Gunman Contract, for example). These games request each controller pose twice: once to prepare the next frame, then again for the current frame, with fresher sensor data. Pimax's second answer differed slightly from the first, and that difference went straight into the image: motion smoothing no longer worked, and could even add jerks. SteadyGrip now absorbs that difference like an ordinary correction. Measured in Gunman Contract ("Arme en mouvement" at 30 ms): jerks −77 % and −76 %, aiming jitter −82 % and −76 % (left and right hands), versus 0 to −9 % before. Games that request once per frame are unchanged.

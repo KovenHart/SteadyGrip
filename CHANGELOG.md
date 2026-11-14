@@ -4,6 +4,10 @@
 
 Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
+## 0.6.3
+
+- **Enregistrer les mouvements** (Paramètres › Diagnostic, désactivé par défaut) : un fichier CSV par partie avec, à chaque image, la position du casque et des deux manettes, l'état de suivi Pimax et la pose envoyée au jeu. Il servira à mettre au point un modèle de bras appris sur les gestes du joueur, pour mieux deviner la position d'une manette hors du champ des caméras.
+
 ## 0.6.2
 
 - **Lissage en mouvement réparé pour les jeux Unity** (Gunman Contract, par exemple). Ces jeux demandent chaque position de manette deux fois : une fois pour préparer l'image suivante, puis de nouveau pour l'image en cours, avec des capteurs plus frais. La seconde réponse de Pimax différait un peu de la première, et cet écart passait tel quel dans l'image : le lissage en mouvement n'agissait plus, et pouvait même ajouter des à-coups. SteadyGrip absorbe maintenant cet écart comme un recalage ordinaire. Mesuré dans Gunman Contract (« Arme en mouvement » à 30 ms) : à-coups −77 % et −76 %, tremblement de visée −82 % et −76 % (mains gauche et droite), contre 0 à −9 % avant. Les jeux qui ne demandent qu'une fois par image ne changent pas.

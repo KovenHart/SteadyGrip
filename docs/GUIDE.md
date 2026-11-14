@@ -129,6 +129,14 @@ Avec le runtime OpenXR de Pimax, le bouton grip se relâche parfois une fraction
 - Le journal indique, à chaque bilan, le nombre de relâchements parasites masqués et le plus long. S'il signale des « relâchements suivis d'un nouvel appui en moins de 0,4 s », augmentez un peu le délai.
 - Désactivé par défaut : dans les jeux où le grip fonctionne bien, il n'y a rien à corriger.
 
+## Enregistrer ses mouvements (diagnostic)
+
+Paramètres › Diagnostic › **« Enregistrer les mouvements »** : pendant que l'interrupteur est activé, SteadyGrip note à chaque image la position du casque et des deux manettes, l'état de suivi donné par Pimax et ce que SteadyGrip a envoyé au jeu. Cela ne change rien en jeu.
+
+- Un fichier par partie, `poses_AAAAMMJJ_HHMMSS.csv`, dans `%LOCALAPPDATA%\SteadyGrip\enregistrements` (environ 3 Mo par minute). L'enregistrement démarre avec le jeu, ou dès qu'on active l'interrupteur jeu lancé, et s'arrête quand on le désactive ou qu'on quitte le jeu.
+- À quoi ça sert : rejouer hors jeu de vrais gestes pour mettre au point de nouvelles méthodes, par exemple un modèle de bras appris sur la façon de jouer de chacun, pour mieux deviner où est une manette sortie du champ des caméras.
+- Le fichier ne contient que des positions et des orientations, sans image ni son.
+
 ## Comparer des réglages pendant une partie
 
 La couche note dans le journal (`%LOCALAPPDATA%\SteadyGrip\SteadyGrip.log`) chaque changement de réglages, une fois le curseur relâché depuis 1 s, et fait le bilan de la période précédente (si elle a duré au moins 5 s) :

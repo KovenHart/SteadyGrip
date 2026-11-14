@@ -164,6 +164,17 @@ function shortcutRow(where, title, text, on) {
     '<button type="button" class="switch" role="switch" aria-checked="' + !!on + '" aria-label="' + esc(title) + '" data-action="shortcut" data-where="' + where + '"></button></div>';
 }
 
+function recordPanel() {
+  const on = !!(state && state.recording);
+  let info = 'Fichiers dans %LOCALAPPDATA%\\SteadyGrip\\enregistrements.';
+  if (state && state.recordFile) info = (on ? 'En cours : ' : 'Dernier fichier : ') + esc(state.recordFile) + ' · ' + (state.recordedFrames || 0).toLocaleString('fr-FR') + ' lignes. ' + info;
+  else if (on) info = 'Lance un jeu : l\'enregistrement démarre avec lui. ' + info;
+  return '<section class="panel" style="padding-top:10px;padding-bottom:6px"><h2 style="margin-top:8px">Diagnostic</h2>' +
+    '<div class="toggle-row"><div><div class="t">Enregistrer les mouvements</div><div class="d">Note la position du casque et des manettes à chaque image, pour améliorer SteadyGrip. Ne change rien en jeu. Environ 3 Mo par minute.</div></div>' +
+    '<button type="button" class="switch" role="switch" aria-checked="' + on + '" aria-label="Enregistrer les mouvements" data-action="record"></button></div>' +
+    '<p class="note" style="margin:0 0 8px">' + info + '</p></section>';
+}
+
 function renderSettings() {
   const theme = state && state.theme === 'evo' ? 'evo' : 'classic';
   const layer = state ? state.layer : 0;
@@ -182,6 +193,7 @@ function renderSettings() {
         '<div class="row"><button type="button" class="btn primary" data-action="install">Installer</button><button type="button" class="btn ghost danger" data-action="uninstall">Désinstaller</button></div></section>' +
       '<section class="panel"><h2>Pimax</h2><p class="note" style="margin:0">' + esc(state && state.pimaxVersion ? state.pimaxVersion : 'Service Pimax non détecté.') + '</p>' +
         '<p class="note" style="margin:0">SteadyGrip lit l\'état de suivi des manettes dans le service Pimax, sans rien y modifier. C\'est pour cela qu\'il demande les droits d\'administrateur.</p></section>' +
+      recordPanel() +
       '<p class="note">SteadyGrip ' + esc(state ? state.version : '') + ' · réglages et journal dans %LOCALAPPDATA%\\SteadyGrip</p>' +
     '</div>';
 }
@@ -252,6 +264,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'setImage') send('setImage', { id: game.id });
   else if (a === 'remove') { if (confirm('Retirer « ' + game.name + ' » de tes jeux ? Ses réglages seront supprimés.')) { send('remove', { id: game.id }); game = null; go('library'); } }
   else if (a === 'install') send('install');
+  else if (a === 'record') send('record', { value: el.getAttribute('aria-checked') !== 'true' });
   else if (a === 'shortcut') send('shortcut', { where: el.dataset.where, value: el.getAttribute('aria-checked') !== 'true' });
   else if (a === 'uninstall') send('uninstall');
   else if (a === 'theme') send('theme', { value: el.dataset.value });
@@ -337,6 +350,7 @@ function mock(msg) {
   setTimeout(() => {
     if (msg.cmd === 'ready') onMessage(s);
     else if (msg.cmd === 'theme') { s.theme = msg.value; onMessage(s); }
+    else if (msg.cmd === 'record') { s.recording = msg.value; if (msg.value) { s.recordFile = 'poses_20261114_201500.csv'; s.recordedFrames = 41250; } onMessage(s); }
     else if (msg.cmd === 'shortcut') { s[msg.where === 'desktop' ? 'desktop' : 'startMenu'] = msg.value; onMessage(s); }
     else if (msg.cmd === 'getGame' || msg.cmd === 'set') {
       if (msg.cmd === 'set') settings[msg.key] = msg.value;

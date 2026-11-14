@@ -117,10 +117,11 @@ struct ActionSpaceInfo {
 
 // Une image retenue pour les mesures (brut et sortie).
 struct StatSample {
-	bool has = false, velValid = false, ok = false;
+	bool has = false, velValid = false, ok = false, headOk = false;
 	double t = 0;
-	V3 rawP, outP, v, w;
-	Q rawQ, outQ;
+	V3 rawP, outP, v, w, headP;
+	Q rawQ, outQ, headQ;
+	int32_t trackState = 0, phase = 0;
 };
 
 struct StreamState {
@@ -297,6 +298,67 @@ void WriteLossCsv(const StreamState& st, double durMs, double gapCm) {
 	fflush(f);
 }
 
+// Enregistrement des mouvements (option de diagnostic de l'application) : une ligne par image et par main,
+// dans %LOCALAPPDATA%\SteadyGrip\enregistrements. Sert à évaluer hors jeu de nouvelles méthodes pour les pertes
+// (modèle de bras appris sur les gestes du joueur) et à étalonner une caméra d'appoint. Appelé sous g_mutex.
+struct PoseRecorder {
+	FILE* f = nullptr;
+	double t0 = 0;
+	const void* primary[2] = { nullptr, nullptr };  // un seul espace par main (le premier vu)
+	uint64_t frames = 0;
+
+	void open() {
+		const std::wstring dir = DataDir() + L"\\enregistrements";
+		CreateDirectoryW(dir.c_str(), nullptr);
+		SYSTEMTIME t;
+		GetLocalTime(&t);
+		wchar_t name[64];
+		swprintf_s(name, L"poses_%04u%02u%02u_%02u%02u%02u.csv", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
+		_wfopen_s(&f, (dir + L"\\" + name).c_str(), L"wb");
+		if (!f) {
+			Log("Enregistrement des mouvements : impossible de créer le fichier\n");
+			return;
+		}
+		setvbuf(f, nullptr, _IOFBF, 1 << 16);
+		fprintf(f, "# SteadyGrip %s ; jeu : %s ; espace de base du jeu, mètres ; état Pimax 0 inconnu 1 suivie 2 perdue 3 réinitialisation ; "
+			"phase SteadyGrip 0 normale 1 dérive contenue 2 modèle de bras 3 retour\r\n", kVersion, g_appName.c_str());
+		fputs("t;main;etat;phase;px;py;pz;qx;qy;qz;qw;vitesses;vx;vy;vz;wx;wy;wz;sx;sy;sz;sqx;sqy;sqz;sqw;casque;hx;hy;hz;hqx;hqy;hqz;hqw\r\n", f);
+		t0 = 0;
+		primary[0] = primary[1] = nullptr;
+		frames = 0;
+		char narrow[64];
+		WideCharToMultiByte(CP_UTF8, 0, name, -1, narrow, sizeof(narrow), nullptr, nullptr);
+		if (g_sharedOk) strncpy_s(g_shared.block()->recordFile, narrow, _TRUNCATE);
+		Log("Enregistrement des mouvements : %s\n", narrow);
+	}
+	void close() {
+		if (!f) return;
+		fclose(f);
+		f = nullptr;
+		Log("Enregistrement des mouvements terminé : %llu lignes\n", (unsigned long long)frames);
+	}
+	// Ouvre ou ferme le fichier selon la demande de l'application.
+	void sync(bool want) {
+		if (want && !f) open();
+		else if (!want && f) close();
+	}
+	void write(const void* stream, int hand, const StatSample& sm) {
+		if (!f || hand < 0 || hand > 1) return;
+		if (!primary[hand]) primary[hand] = stream;
+		if (primary[hand] != stream) return;
+		if (t0 == 0) t0 = sm.t;
+		fprintf(f, "%.4f;%d;%d;%d;%.5f;%.5f;%.5f;%.5f;%.5f;%.5f;%.5f;%d;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;"
+			"%.5f;%.5f;%.5f;%.5f;%.5f;%.5f;%.5f;%d;%.5f;%.5f;%.5f;%.5f;%.5f;%.5f;%.5f\r\n",
+			sm.t - t0, hand, sm.trackState, sm.phase,
+			sm.rawP.x, sm.rawP.y, sm.rawP.z, sm.rawQ.x, sm.rawQ.y, sm.rawQ.z, sm.rawQ.w,
+			sm.velValid ? 1 : 0, sm.v.x, sm.v.y, sm.v.z, sm.w.x, sm.w.y, sm.w.z,
+			sm.outP.x, sm.outP.y, sm.outP.z, sm.outQ.x, sm.outQ.y, sm.outQ.z, sm.outQ.w,
+			sm.headOk ? 1 : 0, sm.headP.x, sm.headP.y, sm.headP.z, sm.headQ.x, sm.headQ.y, sm.headQ.z, sm.headQ.w);
+		frames++;
+		if (g_sharedOk) g_shared.block()->recordedFrames = frames;
+	}
+} g_rec;
+
 std::string SettingsDesc(const FilterSettings& s, int32_t preset) {
 	static const char* presets[] = { "Désactivé", "Léger", "Moyen", "Fort", "Personnalisé" };
 	static const char* couple[] = { "automatique", "toujours", "jamais", "deux grips serrés" };
@@ -398,6 +460,7 @@ void RefreshSettings() {
 		}
 		g_shared.block()->heartbeat = now;
 		g_shared.block()->pid = GetCurrentProcessId();
+		g_rec.sync(g_shared.block()->recordPoses == 1);
 	}
 }
 
@@ -693,6 +756,8 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 		V3 hp;
 		Q hq;
 		const bool headOk = st.trackState != TrackUnknown && g_settings.lossGuard && HeadPose(asi.session, baseSpace, time, hp, hq);
+		// Pour l'enregistrement, la pose du casque est voulue même quand elle ne sert pas au filtre.
+		const bool headRec = headOk || (g_rec.f && HeadPose(asi.session, baseSpace, time, hp, hq));
 		// Pose de l'autre main : pendant une perte (pour lier les mains), et en mode automatique aussi le reste
 		// du temps (pour savoir si les deux mains se déplacent ensemble).
 		V3 pp;
@@ -772,11 +837,18 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 		cur.has = true; cur.t = in.t; cur.rawP = in.p; cur.rawQ = in.q; cur.outP = p; cur.outQ = q;
 		cur.v = in.v; cur.w = in.w; cur.velValid = in.velValid;
 		cur.ok = st.trackState != TrackLost && st.trackState != TrackIniting && phase == 0;
+		cur.trackState = st.trackState;
+		cur.phase = phase;
+		cur.headOk = headRec;
+		if (headRec) { cur.headP = hp; cur.headQ = hq; }
 		if (st.pend.has && std::abs(in.t - st.pend.t) < 0.002) {
 			cur.t = st.pend.t;
 			st.pend = cur;
 		} else if (!st.pend.has || in.t > st.pend.t) {
-			if (st.pend.has) CommitStatSample(st, st.pend);
+			if (st.pend.has) {
+				CommitStatSample(st, st.pend);
+				g_rec.write(&st, st.hand, st.pend);
+			}
 			st.pend = cur;
 		}
 	} else {
@@ -1085,6 +1157,7 @@ XrResult XRAPI_CALL SG_xrDestroyInstance(XrInstance instance) {
 		for (auto& g : g_grip) g = GripState{};
 		g_gripFix.clear();
 		g_gripFixLogged = false;
+		g_rec.close();
 		g_streams.clear();
 		g_viewSpaces.clear();
 	}

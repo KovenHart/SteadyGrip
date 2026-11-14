@@ -106,6 +106,14 @@ With Pimax's OpenXR runtime, the grip button sometimes releases for a fraction o
 - At each summary, the log shows how many spurious releases were masked and the longest one. If it reports "relâchements suivis d'un nouvel appui en moins de 0,4 s" (releases followed by a new press within 0.4 s), increase the delay a little.
 - Off by default: in games where the grip works fine, there is nothing to correct.
 
+## Recording your movements (diagnostics)
+
+Paramètres › Diagnostic › **"Enregistrer les mouvements"** (Settings › Diagnostics › Record movements): while it's on, SteadyGrip writes down, every frame, the headset and both controllers' poses, the tracking state reported by Pimax and what SteadyGrip sent to the game. It changes nothing in game.
+
+- One file per session, `poses_YYYYMMDD_HHMMSS.csv`, in `%LOCALAPPDATA%\SteadyGrip\enregistrements` (about 3 MB per minute). Recording starts with the game, or as soon as the switch is turned on while the game runs, and stops when the switch is turned off or the game quits.
+- What it's for: replaying real movements outside the game to develop new methods, such as an arm model learned from each player's own way of playing, to better guess where a controller is when it leaves the cameras' view.
+- The file only holds positions and orientations, no images or sound.
+
 ## Comparing settings during play
 
 The layer writes every settings change to the log (`%LOCALAPPDATA%\SteadyGrip\SteadyGrip.log`), once the slider has been still for 1 s, with a summary of the previous period (if it lasted at least 5 s): stutter in motion and aiming jitter, with and without SteadyGrip ("Pimax seul"), losses, reinitializations and mean gap at recovery. To compare two settings, play at least one minute with each, doing the same moves.

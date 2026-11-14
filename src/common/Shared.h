@@ -17,9 +17,9 @@
 namespace sg {
 
 constexpr uint32_t kSharedMagic = 0x53475250; // 'SGRP'
-constexpr uint32_t kSharedVersion = 9;
-constexpr wchar_t kSharedName[] = L"Local\\SteadyGripShared_v9";
-constexpr char kVersion[] = "0.6.2";
+constexpr uint32_t kSharedVersion = 10;
+constexpr wchar_t kSharedName[] = L"Local\\SteadyGripShared_v10";
+constexpr char kVersion[] = "0.6.3";
 
 enum Preset : int32_t { PresetOff = 0, PresetLight = 1, PresetMedium = 2, PresetStrong = 3, PresetCustom = 4 };
 
@@ -100,6 +100,11 @@ struct SharedBlock {
 	uint32_t steamAppId;          // numéro Steam du jeu (0 : pas un jeu Steam)
 	int32_t pad6;
 	char profileSection[160];     // section des réglages utilisée (UTF-8), vide : réglages par défaut
+	// Enregistrement des mouvements (diagnostic) : demandé par l'application, état rendu par la couche.
+	volatile LONG recordPoses;    // 1 : la couche enregistre les poses
+	int32_t pad7;
+	uint64_t recordedFrames;      // lignes écrites depuis le début de l'enregistrement en cours
+	char recordFile[260];         // nom du fichier en cours (UTF-8), vide : aucun
 };
 
 inline double NowSeconds() {

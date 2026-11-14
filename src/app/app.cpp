@@ -249,8 +249,12 @@ std::string HandJson(const SharedHand& h, bool fresh) {
 	return "{\"state\":" + JsonStr(state) + ",\"text\":" + JsonStr(text) + "}";
 }
 
+bool RecordingWanted() { return IniGet(L"Diagnostic", L"EnregistrerPoses", 0) != 0; }
+
 std::string BuildState() {
 	SharedBlock* b = g_shared.block();
+	const bool recording = RecordingWanted();
+	InterlockedExchange(&b->recordPoses, recording ? 1 : 0);
 	const int layer = LayerStatus();
 	const int source = b->trackSource;
 	const bool pimaxOk = source == SourceActive || source == SourceSearching || source == SourceIncompatible || source == SourceNoModule;
@@ -302,6 +306,8 @@ std::string BuildState() {
 	out += ",\"pimaxVersion\":" + JsonStr(std::string(b->pimaxVersion, strnlen(b->pimaxVersion, sizeof(b->pimaxVersion))));
 	out += ",\"running\":" + (running ? "{\"id\":" + JsonStr(runId) + ",\"appName\":" + JsonStr(runApp) + "}" : std::string("null"));
 	out += ",\"hands\":" + hands + ",\"tremorPct\":" + std::to_string(tremorPct) + ",\"caught\":" + std::to_string(caught);
+	out += ",\"recording\":" + JsonBool(recording) + ",\"recordedFrames\":" + std::to_string(b->recordedFrames);
+	out += ",\"recordFile\":" + JsonStr(std::string(b->recordFile, strnlen(b->recordFile, sizeof(b->recordFile))));
 	out += ",\"defaultSummary\":" + JsonStr(Summary("default")) + ",\"games\":" + games + "}";
 	return out;
 }
@@ -432,6 +438,7 @@ void OnMessage(const std::string& text) {
 		SetShortcut(InStartMenu, true);
 	} else if (cmd == "shortcut") SetShortcut(m["where"].text == "desktop" ? OnDesktop : InStartMenu, m["value"].truthy());
 	else if (cmd == "uninstall") DoInstall(false);
+	else if (cmd == "record") IniSet(L"Diagnostic", L"EnregistrerPoses", m["value"].truthy() ? 1 : 0);
 	else if (cmd == "getGame") { SendGame(id); return; }
 	else if (cmd == "set") { ApplySetting(id, m["key"].text, m["value"]); SendGame(id); }
 	else if (cmd == "reset") { ResetSettings(id); SendGame(id); }
