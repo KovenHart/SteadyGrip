@@ -4,6 +4,10 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.10
+
+- **Sudden reversals in Zero Caliber 2**: when the second request for the same instant brought a large gap (hand reversing at 2–3 m/s), the raw pose went through as is for that request, then the next request took it back as a spread-out teleport: the hand alternated by 4 to 5 cm from one request to the next. That large gap is now spread out right away, as a teleport. Replayed on both Zero Caliber 2 recordings: sweep jerk −65 % → −75 % (left hand) and −65 % → −82 % (right hand). CrossFire, Gunman Contract and the Unity simulation: identical results.
+
 ## 0.6.9
 
 - **Frozen Pimax poses**: in Zero Caliber 2, the first request for each instant gets a frozen pose from Pimax (the previous instant's), the second a fresh one. During fast sweeps the gap (~3 cm) exceeded the teleport threshold and the output jumped between the two every frame. SteadyGrip now replaces a frozen pose with its own prediction. Replayed on the Zero Caliber 2 recording: left-hand jerk while sweeping −2 % → −64 % (right hand unchanged, −59 %). Replayed on CrossFire and Gunman Contract: smoothing slightly better (+2 to +4 points), no regression.

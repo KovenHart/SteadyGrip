@@ -228,6 +228,19 @@ public:
 				const double rotOffRad = qlog(rotOff_).norm(), rotLim = s.maxRotOffsetDeg * 3.14159265358979 / 180.0;
 				if (rotOffRad > rotLim) rotOff_ = qexp(qlog(rotOff_) * (rotLim / rotOffRad));
 				if (eMm > 0.2) stats_.refinements++;
+			} else {
+				// Grand écart pour le même instant (Zero Caliber 2, changement de sens brusque à 2–3 m/s) : on
+				// l'étale comme une téléportation, exactement comme le ferait la demande de l'instant suivant.
+				// Avant, la pose brute passait telle quelle pour cette demande, puis la suivante la reprenait comme
+				// téléportation : la main alternait de 4 à 5 cm d'une demande à l'autre.
+				stats_.teleports++;
+				const double durMs = std::max(s.teleportBlendMs, eMm / std::max(0.1, s.teleportSpeed));
+				tpOff_ = tpOff_ + posOff_ - ePos;
+				posOff_ = {};
+				rotOff_ = {};
+				tpEnd_ = last_.t + durMs / 1000.0;
+			}
+			{
 				const double t0 = last_.t;
 				last_ = in;
 				last_.t = t0; // l'instant de référence ne bouge pas

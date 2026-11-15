@@ -482,6 +482,39 @@ int main() {
 		check(maxJerk < 0.005, "les deux réponses d'un même instant concordent (< 5 mm)");
 	}
 
+	std::printf("15. Même instant, grand écart (changement de sens brusque) : étalé, pas d'alternance\n");
+	{
+		FilterSettings s = Preset(3);
+		PoseFilter pf;
+		const double dt = 1.0 / 72;
+		V3 fresh{ 0, 1.2, -0.3 }, v{ 2.5, 0, 0 };
+		double x = 0, maxGap = 0, maxStep = 0;
+		V3 prev{};
+		for (int i = 0; i < 150; i++) {
+			const double t = i * dt;
+			PoseIn a;
+			a.t = t; a.v = v; a.q = Q{}; a.poseValid = a.velValid = true;
+			a.p = fresh;                                   // pose figée
+			V3 o1, o2; Q oq;
+			pf.process(a, s, o1, oq);
+			if (i == 80) v = V3{ -2.5, 0, 0 };             // demi-tour brusque
+			x += v.x * dt;
+			if (i == 80) x -= 0.03;                        // et recalage de 3 cm en plus
+			fresh = V3{ x, 1.2, -0.3 };
+			PoseIn b = a;
+			b.t = t - 0.0001;                              // 2e demande, légèrement « dans le passé »
+			b.p = fresh; b.v = v;
+			pf.process(b, s, o2, oq);
+			if (i > 20) {
+				maxGap = std::max(maxGap, (o2 - o1).norm());
+				if (i > 21) maxStep = std::max(maxStep, (o1 - prev).norm());
+			}
+			prev = o2;
+		}
+		check(maxGap < 0.005, "les deux réponses d'un même instant concordent (< 5 mm)");
+		check(maxStep < 0.05, "pas de saut d'une image à l'autre (< 5 cm à 2,5 m/s)");
+	}
+
 	std::printf("%s\n", fails ? "ÉCHEC" : "OK");
 	return fails;
 }
