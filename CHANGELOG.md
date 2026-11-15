@@ -4,6 +4,10 @@
 
 Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
+## 0.6.11
+
+- **« Arme en mouvement » jusqu'à 80 ms** (au lieu de 30) dans les réglages avancés. Le préréglage Fort reste à 30 ms. Dans Zero Caliber 2, 45 à 60 ms suppriment presque tous les à-coups restants en balayage rapide (recalages de Pimax de 2 à 4 cm en une image) : main gauche −75 % → −83 % (45 ms) / −86 % (60 ms), pour environ 1 mm d'écart moyen en plus à la pose de Pimax.
+
 ## 0.6.10
 
 - **Changement de sens brusque dans Zero Caliber 2** : quand la seconde demande d'un même instant apportait un grand écart (demi-tour de la main à 2–3 m/s), la pose brute passait telle quelle pour cette demande, puis la demande suivante la reprenait comme téléportation étalée : la main alternait de 4 à 5 cm d'une demande à l'autre. Ce grand écart est maintenant étalé tout de suite, comme une téléportation. Rejoué sur les deux enregistrements de Zero Caliber 2 : à-coups en balayage −65 % → −75 % (main gauche) et −65 % → −82 % (main droite). CrossFire, Gunman Contract et la simulation Unity : résultats identiques.

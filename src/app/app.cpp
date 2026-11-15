@@ -400,7 +400,7 @@ void ApplySetting(const std::string& id, const std::string& key, const JsonValue
 	else {
 		// Réglages fins du lissage : on passe en préréglage personnalisé.
 		if (key == "stillTauMs") s.stillTauMs = std::clamp(v.num(), 10.0, 200.0);
-		else if (key == "movingTauMs") s.movingTauMs = std::clamp(v.num(), 0.0, 30.0);
+		else if (key == "movingTauMs") s.movingTauMs = std::clamp(v.num(), 0.0, 80.0);
 		else if (key == "teleportBlendMs") s.teleportBlendMs = std::clamp(v.num(), 0.0, 300.0);
 		else if (key == "orientSmoothing") s.orientSmoothing = std::clamp(v.num(), 0.0, 100.0);
 		else return;

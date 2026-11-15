@@ -40,7 +40,7 @@ Le filtre suit la trajectoire prévue par les vitesses que donne le runtime, et 
 
 - **aucun retard ajouté au mouvement réel** : la sortie bouge exactement comme la pose brute, seuls les recalages sont étalés ;
 - manette quasi immobile (visée stable) : étalement lent, réglé par « Lissage à l'arrêt » ;
-- manette en mouvement rapide : étalement presque instantané, réglé par « Lissage en mouvement » ;
+- manette en mouvement rapide : étalement presque instantané, réglé par « Lissage en mouvement » (« Arme en mouvement » dans les réglages avancés, 0 à 80 ms, 30 ms en préréglage Fort). Monter à 45–60 ms supprime presque tous les à-coups restants en balayage rapide, au prix d'une main qui suit la pose de Pimax d'un peu plus loin. Mesuré sur trois enregistrements de Zero Caliber 2 (main gauche) : à-coups −75 % à 30 ms, −83 % à 45 ms, −86 % à 60 ms ; à-coups de plus d'1 cm : 60 → 8 → 8 ; écart moyen à la pose de Pimax 8,3 → 9,0 → 9,7 mm ;
 - gros recalage, ou recalage après un passage hors champ : étalement linéaire, réglé par « Étalement des téléportations », sans dépasser 3 m/s.
 
 Si le runtime ne fournit pas les vitesses, la couche les estime elle-même à partir des dernières poses (régression sur environ 50 ms). Sur les sessions TrackProbe, ce mode de secours donne des résultats proches de ceux obtenus avec les vraies vitesses.

@@ -4,6 +4,10 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.11
+
+- **"Arme en mouvement" up to 80 ms** (instead of 30) in the advanced settings. The Strong preset stays at 30 ms. In Zero Caliber 2, 45 to 60 ms remove almost all remaining jolts during fast sweeps (Pimax corrections of 2 to 4 cm in one frame): left hand −75 % → −83 % (45 ms) / −86 % (60 ms), for about 1 mm more mean gap to Pimax's pose.
+
 ## 0.6.10
 
 - **Sudden reversals in Zero Caliber 2**: when the second request for the same instant brought a large gap (hand reversing at 2–3 m/s), the raw pose went through as is for that request, then the next request took it back as a spread-out teleport: the hand alternated by 4 to 5 cm from one request to the next. That large gap is now spread out right away, as a teleport. Replayed on both Zero Caliber 2 recordings: sweep jerk −65 % → −75 % (left hand) and −65 % → −82 % (right hand). CrossFire, Gunman Contract and the Unity simulation: identical results.

@@ -128,7 +128,7 @@ function renderGame() {
 const ADV = [
   { title: 'Tremblements', text: 'Les caméras corrigent la position de la manette environ 25 fois par seconde. Ces réglages étalent ces petites corrections.', items: [
     { key: 'stillTauMs', label: 'Arme immobile', unit: ' ms', min: 10, max: 200, left: 'Réactive', right: 'Très lisse', help: 'Ce qu\'on voit en visant. Plus haut : visée plus calme.' },
-    { key: 'movingTauMs', label: 'Arme en mouvement', unit: ' ms', min: 0, max: 30, left: 'Réactive', right: 'Fluide', help: 'Supprime les saccades quand tu déplaces l\'arme.' } ] },
+    { key: 'movingTauMs', label: 'Arme en mouvement', unit: ' ms', min: 0, max: 80, left: 'Réactive', right: 'Fluide', help: 'Supprime les saccades quand tu déplaces l\'arme.' } ] },
   { title: 'Visée', text: 'Calme l\'orientation de l\'arme quand tu vises, sans retard quand tu la tournes vite.', items: [
     { key: 'orientSmoothing', label: 'Stabilisation de la visée', unit: '', min: 0, max: 100, left: 'Aucune', right: 'Maximale', help: '75 donne le meilleur résultat mesuré dans CrossFire: Sierra Squad.' },
     { key: 'teleportBlendMs', label: 'Retour dans le champ', unit: ' ms', min: 0, max: 300, left: 'Immédiat', right: 'En douceur', help: 'Temps pour rejoindre la vraie position quand les caméras retrouvent la manette.' } ] },

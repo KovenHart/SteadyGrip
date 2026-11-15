@@ -38,7 +38,7 @@ The filter follows the trajectory predicted by the runtime's velocities and spre
 
 - **no lag added to real motion**: the output moves exactly like the raw pose, only corrections are spread;
 - controller almost still (steady aim): slow spreading, set by "smoothing at rest";
-- controller moving fast: almost instant spreading, set by "smoothing in motion";
+- controller moving fast: almost instant spreading, set by "smoothing in motion" ("Arme en mouvement" in the advanced settings, 0 to 80 ms, 30 ms in the Strong preset). Raising it to 45–60 ms removes almost all remaining jolts in fast sweeps, at the cost of the hand following Pimax's pose from a bit further. Measured on three Zero Caliber 2 recordings (left hand): jerk −75 % at 30 ms, −83 % at 45 ms, −86 % at 60 ms; jolts over 1 cm: 60 → 8 → 8; mean gap to Pimax's pose 8.3 → 9.0 → 9.7 mm;
 - large correction, or correction after being out of view: linear spreading, set by "teleport spreading", never faster than 3 m/s.
 
 If the runtime does not provide velocities, the layer estimates them from recent poses (regression over about 50 ms).
