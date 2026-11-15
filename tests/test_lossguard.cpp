@@ -451,6 +451,37 @@ int main() {
 		check(pf.stats().frozen > 20, "poses figées comptées");
 	}
 
+	std::printf("14. Chaque instant demandé deux fois : d'abord pose figée, puis pose fraîche\n");
+	{
+		// Cas réel (Zero Caliber 2) : à vitesse élevée, l'écart entre la pose figée et la pose fraîche (~33 mm) dépassait
+		// le seuil de téléportation, et la sortie suivait alternativement l'une puis l'autre.
+		FilterSettings s = Preset(3);
+		PoseFilter pf;
+		const double dt = 1.0 / 72;
+		const V3 v{ 2.5, 0, 0 };
+		V3 fresh{ 0, 1.2, -0.3 };
+		double maxJerk = 0;
+		std::vector<V3> outs;
+		for (int i = 0; i < 150; i++) {
+			const double t = i * dt;
+			PoseIn a;
+			a.t = t; a.v = v; a.q = Q{}; a.poseValid = a.velValid = true;
+			a.p = fresh;                                   // 1re demande : pose de l'instant précédent (figée)
+			V3 op; Q oq;
+			pf.process(a, s, op, oq);
+			outs.push_back(op);
+			PoseIn b = a;
+			b.t = t + 0.0001;
+			fresh = V3{ t * 2.5, 1.2, -0.3 };
+			b.p = fresh;                                   // 2e demande, même instant : pose fraîche
+			pf.process(b, s, op, oq);
+			outs.push_back(op);
+		}
+		// Écart entre les deux réponses d'un même instant (le jeu peut utiliser l'une ou l'autre).
+		for (size_t i = 40; i + 1 < outs.size(); i += 2) maxJerk = std::max(maxJerk, (outs[i + 1] - outs[i]).norm());
+		check(maxJerk < 0.005, "les deux réponses d'un même instant concordent (< 5 mm)");
+	}
+
 	std::printf("%s\n", fails ? "ÉCHEC" : "OK");
 	return fails;
 }

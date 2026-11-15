@@ -192,7 +192,7 @@ public:
 	const FilterStats& stats() const { return stats_; }
 
 	// Ajoute une pose brute et renvoie la pose filtrée. Pour un même instant, renvoie le même résultat.
-	void process(const PoseIn& in, const FilterSettings& s, V3& outP, Q& outQ) {
+	void process(PoseIn in, const FilterSettings& s, V3& outP, Q& outQ) {
 		outP = in.p;
 		outQ = in.q;
 		if (!in.poseValid) {
@@ -276,8 +276,6 @@ public:
 			return;
 		}
 
-		if (in.p.x == last_.p.x && in.p.y == last_.p.y && in.p.z == last_.p.z) stats_.frozen++;
-
 		// 1) Prédiction à partir de la pose précédente et des vitesses (moyenne des deux extrémités).
 		//    Si le runtime ne fournit pas les vitesses, on les estime sur les dernières poses brutes
 		//    (régression sur ~50 ms, qui dilue les recalages au lieu de les recopier).
@@ -300,6 +298,17 @@ public:
 			errWorldAvg_ += 0.02 * (errWorld - errWorldAvg_);
 			errLocalAvg_ += 0.02 * (errLocal - errLocalAvg_);
 			if (errLocalAvg_ < errWorldAvg_) qPred = qPredLocal;
+		}
+
+		// Pose figée : pour un nouvel instant, Pimax renvoie exactement la pose de l'instant précédent (il ne l'a
+		// pas encore actualisée). Ce n'est pas une mesure : on la remplace par la prédiction. Sans cela, dans
+		// Zero Caliber 2 (qui demande chaque instant deux fois : d'abord pose figée, puis pose fraîche), l'écart
+		// entre les deux dépassait le seuil de téléportation dès 1 m/s et la main gauche sautait de 2 à 3 cm
+		// d'une image à l'autre pendant les balayages.
+		if (in.p.x == last_.p.x && in.p.y == last_.p.y && in.p.z == last_.p.z && in.q.w == last_.q.w && in.q.x == last_.q.x) {
+			stats_.frozen++;
+			in.p = pPred;
+			in.q = qPred;
 		}
 
 		// 2) Innovation = recalage apporté par le runtime depuis la pose précédente.

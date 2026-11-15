@@ -4,6 +4,10 @@
 
 Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
+## 0.6.9
+
+- **Poses figées de Pimax** : dans Zero Caliber 2, la première demande de chaque instant reçoit de Pimax une pose figée (celle de l'instant précédent), la seconde une pose fraîche. En balayage rapide, l'écart (~3 cm) dépassait le seuil de téléportation et la sortie sautait de l'une à l'autre à chaque image. SteadyGrip remplace maintenant une pose figée par sa propre prédiction. Rejoué sur l'enregistrement de Zero Caliber 2 : à-coups de la main gauche en balayage −2 % → −64 % (main droite inchangée, −59 %). Rejoué sur CrossFire et Gunman Contract : lissage légèrement meilleur (+2 à +4 points), aucune régression.
+
 ## 0.6.8
 
 - **Instant redemandé plus tard** : certains jeux (Zero Caliber 2) demandent chaque instant deux fois, une image à l'avance puis à nouveau l'image suivante. SteadyGrip renvoie désormais la même réponse pour cet instant, au lieu d'appliquer un décalage calculé pour une autre pose de Pimax (parfois figée). Mesuré dans Zero Caliber 2 avant correction : la main gauche n'était lissée qu'à −15 % pendant les balayages (−71 % pour la droite).

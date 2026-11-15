@@ -4,6 +4,10 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.9
+
+- **Frozen Pimax poses**: in Zero Caliber 2, the first request for each instant gets a frozen pose from Pimax (the previous instant's), the second a fresh one. During fast sweeps the gap (~3 cm) exceeded the teleport threshold and the output jumped between the two every frame. SteadyGrip now replaces a frozen pose with its own prediction. Replayed on the Zero Caliber 2 recording: left-hand jerk while sweeping −2 % → −64 % (right hand unchanged, −59 %). Replayed on CrossFire and Gunman Contract: smoothing slightly better (+2 to +4 points), no regression.
+
 ## 0.6.8
 
 - **Instant requested again later**: some games (Zero Caliber 2) request each instant twice, one frame ahead, then again on the next frame. SteadyGrip now returns the same answer for that instant, instead of applying an offset computed for another (sometimes frozen) Pimax pose. Measured in Zero Caliber 2 before the fix: the left hand was only smoothed by −15 % during sweeps (−71 % for the right).
