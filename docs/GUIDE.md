@@ -167,7 +167,8 @@ Paramètres › Diagnostic › **« Enregistrer les mouvements »** : pendant qu
 
 - Un fichier par partie, `poses_AAAAMMJJ_HHMMSS.csv`, dans `%LOCALAPPDATA%\SteadyGrip\enregistrements` (environ 3 Mo par minute). L'enregistrement démarre avec le jeu, ou dès qu'on active l'interrupteur jeu lancé, et s'arrête quand on le désactive ou qu'on quitte le jeu.
 - À quoi ça sert : rejouer hors jeu de vrais gestes pour mettre au point de nouvelles méthodes, par exemple un modèle de bras appris sur la façon de jouer de chacun, pour mieux deviner où est une manette sortie du champ des caméras.
-- Le fichier ne contient que des positions et des orientations, sans image ni son.
+- Un second fichier, `demandes_AAAAMMJJ_HHMMSS.csv`, note chaque demande de position faite par le jeu (en avant, au même instant, dans le passé), pour analyser la façon dont un jeu interroge les manettes.
+- Les fichiers ne contiennent que des positions et des orientations, sans image ni son.
 
 ## Comparer des réglages pendant une partie
 

@@ -163,6 +163,9 @@ struct FilterStats {
 	uint64_t corrections = 0;   // recalages > 0,2 mm absorbés
 	uint64_t teleports = 0;     // recalages étalés comme téléportations
 	uint64_t refinements = 0;   // même instant redemandé avec une pose différente (absorbé)
+	uint64_t pastReused = 0;    // instant déjà calculé redemandé plus tard : même réponse qu'au premier calcul
+	uint64_t pastOther = 0;     // demande dans le passé pour un instant jamais calculé : décalage courant appliqué
+	uint64_t frozen = 0;        // pose identique à la précédente pour un nouvel instant (Pimax n'a rien actualisé)
 	double lastCorrMm = 0;
 	double offsetMm = 0;        // écart actuel entre la sortie et la pose brute
 	double offsetDeg = 0;
@@ -200,6 +203,7 @@ public:
 		if (!s.enabled) {
 			has_ = false;
 			histN_ = 0;
+			outN_ = 0;
 			posOff_ = {};
 			rotOff_ = {};
 			tpOff_ = {};
@@ -231,10 +235,24 @@ public:
 			}
 			outP = in.p + posOff_ + tpOff_;
 			outQ = (tpRot_ * rotOff_ * in.q).normalized();
+			pushOutput(last_.t, outP, outQ);
 			updateStatsOffsets();
 			return;
 		}
-		if (has_ && in.t < last_.t) { // requête dans le passé : on applique le décalage courant sans l'actualiser
+		if (has_ && in.t < last_.t) {
+			// Requête dans le passé. Certains jeux (Zero Caliber 2) demandent chaque instant deux fois : une image
+			// à l'avance, puis à nouveau l'image suivante. Si cet instant a déjà été calculé, on renvoie la même
+			// réponse : le décalage courant a été calculé pour une autre pose de Pimax (parfois figée), et
+			// l'appliquer à celle-ci faisait sauter la main de plusieurs centimètres en mouvement rapide.
+			for (int i = 0; i < outN_; i++) {
+				if (std::abs(outHist_[i].t - in.t) < kSameInstant) {
+					stats_.pastReused++;
+					outP = outHist_[i].p;
+					outQ = outHist_[i].q;
+					return;
+				}
+			}
+			stats_.pastOther++;
 			outP = in.p + posOff_ + tpOff_;
 			outQ = (tpRot_ * rotOff_ * in.q).normalized();
 			return;
@@ -245,6 +263,7 @@ public:
 			has_ = true;
 			last_ = in;
 			histN_ = 0;
+			outN_ = 0;
 			pushHistory(in);
 			lastCorrT_ = in.t;
 			posOff_ = {};
@@ -252,9 +271,12 @@ public:
 			tpOff_ = {};
 			tpRot_ = {};
 			tpEnd_ = -1;
+			pushOutput(in.t, in.p, in.q);
 			updateStatsOffsets();
 			return;
 		}
+
+		if (in.p.x == last_.p.x && in.p.y == last_.p.y && in.p.z == last_.p.z) stats_.frozen++;
 
 		// 1) Prédiction à partir de la pose précédente et des vitesses (moyenne des deux extrémités).
 		//    Si le runtime ne fournit pas les vitesses, on les estime sur les dernières poses brutes
@@ -346,6 +368,7 @@ public:
 		pushHistory(in);
 		outP = in.p + posOff_ + tpOff_;
 		outQ = (tpRot_ * rotOff_ * in.q).normalized();
+		pushOutput(in.t, outP, outQ);
 		updateStatsOffsets();
 	}
 
@@ -398,6 +421,17 @@ private:
 	double lastCorrT_ = 0;
 	PoseIn hist_[kHist];
 	int histN_ = 0;
+	// Dernières réponses, par instant (pour les instants redemandés plus tard).
+	struct OutSample { double t = 0; V3 p; Q q; };
+	static constexpr int kOutHist = 8;
+	OutSample outHist_[kOutHist];
+	int outN_ = 0;
+	void pushOutput(double t, const V3& p, const Q& q) {
+		if (outN_ > 0 && std::abs(outHist_[0].t - t) < kSameInstant) { outHist_[0].p = p; outHist_[0].q = q; return; }
+		for (int i = kOutHist - 1; i > 0; i--) outHist_[i] = outHist_[i - 1];
+		outHist_[0] = { t, p, q };
+		outN_ = std::min(outN_ + 1, kOutHist);
+	}
 	V3 tpOff_;
 	Q tpRot_;
 	double tpEnd_ = -1;

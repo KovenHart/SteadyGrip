@@ -144,7 +144,8 @@ Paramètres › Diagnostic › **"Enregistrer les mouvements"** (Settings › Di
 
 - One file per session, `poses_YYYYMMDD_HHMMSS.csv`, in `%LOCALAPPDATA%\SteadyGrip\enregistrements` (about 3 MB per minute). Recording starts with the game, or as soon as the switch is turned on while the game runs, and stops when the switch is turned off or the game quits.
 - What it's for: replaying real movements outside the game to develop new methods, such as an arm model learned from each player's own way of playing, to better guess where a controller is when it leaves the cameras' view.
-- The file only holds positions and orientations, no images or sound.
+- A second file, `demandes_YYYYMMDD_HHMMSS.csv`, records every pose request made by the game (ahead, same instant, in the past), to analyse how a game queries the controllers.
+- The files only hold positions and orientations, no images or sound.
 
 ## Comparing settings during play
 

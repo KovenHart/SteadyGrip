@@ -139,7 +139,7 @@ struct StreamState {
 	// Bilan périodique pour le journal
 	double logT0 = 0;
 	uint64_t frames = 0, poseOk = 0, velOk = 0;
-	uint64_t logCorr0 = 0, logTp0 = 0, logRef0 = 0;
+	uint64_t logCorr0 = 0, logTp0 = 0, logRef0 = 0, logPastR0 = 0, logPastO0 = 0, logFrozen0 = 0;
 	int lastVelState = -1;
 	int lastTrackedState = -1;   // bit XR_SPACE_LOCATION_POSITION_TRACKED_BIT
 	double untrackedSince = 0;
@@ -306,6 +306,7 @@ void WriteLossCsv(const StreamState& st, double durMs, double gapCm) {
 // (modèle de bras appris sur les gestes du joueur) et à étalonner une caméra d'appoint. Appelé sous g_mutex.
 struct PoseRecorder {
 	FILE* f = nullptr;
+	FILE* fc = nullptr;   // toutes les demandes du jeu, une ligne par appel (diagnostic du rythme des demandes)
 	double t0 = 0;
 	const void* primary[2] = { nullptr, nullptr };  // un seul espace par main (le premier vu)
 	uint64_t frames = 0;
@@ -333,8 +334,17 @@ struct PoseRecorder {
 		WideCharToMultiByte(CP_UTF8, 0, name, -1, narrow, sizeof(narrow), nullptr, nullptr);
 		if (g_sharedOk) strncpy_s(g_shared.block()->recordFile, narrow, _TRUNCATE);
 		Log("Enregistrement des mouvements : %s\n", narrow);
+		wchar_t nameC[64];
+		swprintf_s(nameC, L"demandes_%04u%02u%02u_%02u%02u%02u.csv", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
+		_wfopen_s(&fc, (dir + L"\\" + nameC).c_str(), L"wb");
+		if (fc) {
+			setvbuf(fc, nullptr, _IOFBF, 1 << 16);
+			fputs("# Une ligne par demande du jeu (espace enregistré de chaque main). type : 0 en avant, 1 même instant, 2 dans le passé\r\n", fc);
+			fputs("t;main;type;px;py;pz;sx;sy;sz\r\n", fc);
+		}
 	}
 	void close() {
+		if (fc) { fclose(fc); fc = nullptr; }
 		if (!f) return;
 		fclose(f);
 		f = nullptr;
@@ -344,6 +354,13 @@ struct PoseRecorder {
 	void sync(bool want) {
 		if (want && !f) open();
 		else if (!want && f) close();
+	}
+	void writeCall(const void* stream, int hand, int type, double t, const V3& raw, const V3& out) {
+		if (!fc || hand < 0 || hand > 1) return;
+		if (!primary[hand]) primary[hand] = stream;
+		if (primary[hand] != stream) return;
+		if (t0 == 0) t0 = t;
+		fprintf(fc, "%.4f;%d;%d;%.5f;%.5f;%.5f;%.5f;%.5f;%.5f\r\n", t - t0, hand, type, raw.x, raw.y, raw.z, out.x, out.y, out.z);
 	}
 	void write(const void* stream, int hand, const StatSample& sm) {
 		if (!f || hand < 0 || hand > 1) return;
@@ -735,9 +752,10 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 	}
 
 	// Diagnostic du rythme des demandes : même instant, dans le passé, ou en avant (et de combien).
+	int callType = 0;
 	if (st.lastCallT) {
-		if (time == st.lastCallT) st.callSame++;
-		else if (time < st.lastCallT) st.callPast++;
+		if (time == st.lastCallT) { st.callSame++; callType = 1; }
+		else if (time < st.lastCallT) { st.callPast++; callType = 2; }
 		else { st.callFwd++; if (st.fwdDtMs.size() < 4000) st.fwdDtMs.push_back((time - st.lastCallT) * 1e-6); }
 	}
 	if (time > st.lastCallT || !st.lastCallT) st.lastCallT = time;
@@ -798,6 +816,12 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 				v.front(), v[v.size() / 2], v[v.size() * 9 / 10], v.back(), g_displayPeriod * 1e-6,
 				(unsigned long long)b[0], (unsigned long long)b[1], (unsigned long long)b[2], (unsigned long long)b[3], (unsigned long long)b[4]);
 		}
+		Log("    instants redemandés plus tard : %llu même réponse, %llu autres ; poses figées de Pimax : %llu\n",
+			(unsigned long long)(fs.pastReused - st.logPastR0), (unsigned long long)(fs.pastOther - st.logPastO0),
+			(unsigned long long)(fs.frozen - st.logFrozen0));
+		st.logPastR0 = fs.pastReused;
+		st.logPastO0 = fs.pastOther;
+		st.logFrozen0 = fs.frozen;
 		st.fwdDtMs.clear();
 		st.callFwd = st.callSame = st.callPast = 0;
 		for (auto& b : st.relBins) b = 0;
@@ -917,6 +941,7 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 		cur.phase = phase;
 		cur.headOk = headRec;
 		if (headRec) { cur.headP = hp; cur.headQ = hq; }
+		g_rec.writeCall(&st, st.hand, callType, in.t, in.p, p);
 		if (st.pend.has && std::abs(in.t - st.pend.t) < 0.002) {
 			cur.t = st.pend.t;
 			st.pend = cur;

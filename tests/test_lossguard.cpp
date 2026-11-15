@@ -3,6 +3,7 @@
 #include "../src/common/PoseFilter.h"
 #include <cstdio>
 #include <random>
+#include <vector>
 using namespace sg;
 
 static int fails = 0;
@@ -415,6 +416,39 @@ int main() {
 		const bool ok = back.load(f);
 		std::fclose(f);
 		check(ok && back.size() == LearnedArm::kMax && back.predict(Q{}, Q{}).x > 7000 - LearnedArm::kMax, "ancien fichier plus grand : relu, postures récentes gardées");
+	}
+
+	std::printf("13. Instant redemandé plus tard (Zero Caliber 2)\n");
+	{
+		// Le jeu demande l'instant N+1, puis à nouveau l'instant N : la réponse pour N doit être celle déjà donnée,
+		// même si Pimax a entre-temps livré une pose figée qui a modifié le décalage.
+		FilterSettings s = Preset(3);
+		PoseFilter pf;
+		const double dt = 1.0 / 72;
+		const V3 v{ 1.0, 0, 0 };
+		std::vector<V3> first;
+		double maxDiff = 0;
+		V3 lastRaw;
+		for (int i = 0; i < 200; i++) {
+			const double t = i * dt;
+			PoseIn in;
+			in.t = t; in.v = v; in.q = Q{}; in.poseValid = in.velValid = true;
+			in.p = (i % 7 == 3) ? lastRaw : V3{ t, 1.2, -0.3 };   // une pose figée de temps en temps
+			lastRaw = in.p;
+			V3 op; Q oq;
+			pf.process(in, s, op, oq);
+			first.push_back(op);
+			if (i > 0) {   // l'instant précédent, redemandé, avec la pose fraîche
+				PoseIn past = in;
+				past.t = t - dt;
+				past.p = V3{ t - dt, 1.2, -0.3 };
+				V3 pp; Q pq;
+				pf.process(past, s, pp, pq);
+				maxDiff = std::max(maxDiff, (pp - first[i - 1]).norm());
+			}
+		}
+		check(maxDiff < 1e-9 && pf.stats().pastReused == 199, "même réponse pour un instant redemandé plus tard");
+		check(pf.stats().frozen > 20, "poses figées comptées");
 	}
 
 	std::printf("%s\n", fails ? "ÉCHEC" : "OK");

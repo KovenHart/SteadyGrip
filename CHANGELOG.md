@@ -4,6 +4,11 @@
 
 Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
+## 0.6.8
+
+- **Instant redemandé plus tard** : certains jeux (Zero Caliber 2) demandent chaque instant deux fois, une image à l'avance puis à nouveau l'image suivante. SteadyGrip renvoie désormais la même réponse pour cet instant, au lieu d'appliquer un décalage calculé pour une autre pose de Pimax (parfois figée). Mesuré dans Zero Caliber 2 avant correction : la main gauche n'était lissée qu'à −15 % pendant les balayages (−71 % pour la droite).
+- **Diagnostic** : le journal compte les instants redemandés plus tard et les poses figées de Pimax ; l'enregistrement des mouvements ajoute un fichier `demandes_….csv` avec chaque demande du jeu.
+
 ## 0.6.7
 
 - **Main hors de portée du bras** : marge portée de 5 à 10 cm. Dans Zero Caliber 2, bras le long du corps, la position de visée de la main (quelques centimètres devant le grip) atteint 94 à 99 cm du cou et était bloquée à tort. Les erreurs de Pimax mesurées (1,03 à 1,52 m) restent retenues ; cas réel au fusil de précision : écart maximal affiché de 84 à 58 cm (54 cm avec l'ancienne marge).

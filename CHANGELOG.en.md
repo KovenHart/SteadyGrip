@@ -4,6 +4,11 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.8
+
+- **Instant requested again later**: some games (Zero Caliber 2) request each instant twice, one frame ahead, then again on the next frame. SteadyGrip now returns the same answer for that instant, instead of applying an offset computed for another (sometimes frozen) Pimax pose. Measured in Zero Caliber 2 before the fix: the left hand was only smoothed by −15 % during sweeps (−71 % for the right).
+- **Diagnostics**: the log counts instants requested again later and Pimax's frozen poses; movement recording adds a `demandes_….csv` file with every game request.
+
 ## 0.6.7
 
 - **Hand out of arm's reach**: margin raised from 5 to 10 cm. In Zero Caliber 2, with the arm hanging, the hand's aim pose (a few centimetres in front of the grip) reaches 94 to 99 cm from the neck and was wrongly held. Measured Pimax errors (1.03 to 1.52 m) are still held; real sniper-rifle case: largest displayed gap from 84 to 58 cm (54 cm with the old margin).
