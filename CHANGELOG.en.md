@@ -4,6 +4,10 @@
 
 What's new in each SteadyGrip version, most recent first.
 
+## 0.6.7
+
+- **Hand out of arm's reach**: margin raised from 5 to 10 cm. In Zero Caliber 2, with the arm hanging, the hand's aim pose (a few centimetres in front of the grip) reaches 94 to 99 cm from the neck and was wrongly held. Measured Pimax errors (1.03 to 1.52 m) are still held; real sniper-rifle case: largest displayed gap from 84 to 58 cm (54 cm with the old margin).
+
 ## 0.6.6
 
 - **Learned arm model on by default**: it is the combination that gave the best results on every measured session. No longer marked experimental. A game whose settings were already saved keeps its choice.

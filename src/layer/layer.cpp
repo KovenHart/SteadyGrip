@@ -837,7 +837,7 @@ void FilterPose(XrSpace space, XrSpace baseSpace, XrTime time, XrSpaceLocationFl
 			if (st.lastCapped) {
 				st.cappedSince = nowC;
 				Log("[%s] espace %p : main suivie hors de portée du bras (erreur de Pimax) : position bloquée à %.0f cm du cou\n",
-					st.hand == 0 ? "gauche" : "droite", (void*)space, (g_settings.maxReachM + 0.05) * 100.0);
+					st.hand == 0 ? "gauche" : "droite", (void*)space, (g_settings.maxReachM + LossGuard::kReachMarginM) * 100.0);
 			} else
 				Log("[%s] espace %p : de nouveau à portée du bras après %.0f ms\n", st.hand == 0 ? "gauche" : "droite", (void*)space,
 					(nowC - st.cappedSince) * 1000.0);

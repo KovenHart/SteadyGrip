@@ -645,6 +645,9 @@ public:
 	bool usedLearnedArm() const { return armUsed_; }
 	// Main suivie mais hors de portée du bras (erreur de Pimax) : position bloquée à la portée du bras.
 	bool capped() const { return capped_; }
+	// Marge au-delà de la portée du bras. 10 cm : bras le long du corps, la pose de visée (quelques cm devant
+	// le grip) atteint 94 à 99 cm du cou (Zero Caliber 2) ; les erreurs de Pimax mesurées vont de 1,03 à 1,52 m.
+	static constexpr double kReachMarginM = 0.10;
 	uint64_t cappedFrames() const { return cappedFrames_; }
 	bool coupled() const { return coupled_; }
 	bool lastRigid() const { return coupleAllowed_; }
@@ -676,7 +679,7 @@ public:
 		V3 outLocal = local;
 		if (state == TrackTracking) {
 			// Main « suivie » hors de portée du bras : Pimax se trompe (peu de LED visibles, reflet). La position
-			// affichée est bloquée à la portée du bras (+5 cm de marge), et le modèle appris n'en apprend rien.
+			// affichée est bloquée à la portée du bras (+10 cm de marge), et le modèle appris n'en apprend rien.
 			const V3 rawLocal = body_.toLocal(rawP);
 			const double reachLimit = s.maxReachM + kReachMarginM;
 			capped_ = local.norm() > reachLimit || rawLocal.norm() > reachLimit;
@@ -794,7 +797,6 @@ private:
 	}
 
 	static constexpr double kArmBlendS = 1.0, kArmJumpS = 0.2;
-	static constexpr double kReachMarginM = 0.05;  // main gauche le long du corps : jusqu'à 89 cm du cou mesurés
 	bool capped_ = false;
 	uint64_t cappedFrames_ = 0;
 	struct RelSample { double t; V3 rel; };

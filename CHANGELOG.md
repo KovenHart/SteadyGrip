@@ -4,6 +4,10 @@
 
 Les nouveautés de chaque version de SteadyGrip, la plus récente en premier.
 
+## 0.6.7
+
+- **Main hors de portée du bras** : marge portée de 5 à 10 cm. Dans Zero Caliber 2, bras le long du corps, la position de visée de la main (quelques centimètres devant le grip) atteint 94 à 99 cm du cou et était bloquée à tort. Les erreurs de Pimax mesurées (1,03 à 1,52 m) restent retenues ; cas réel au fusil de précision : écart maximal affiché de 84 à 58 cm (54 cm avec l'ancienne marge).
+
 ## 0.6.6
 
 - **Modèle de bras appris activé par défaut** : c'est la combinaison qui a donné les meilleurs résultats sur toutes les parties mesurées. Il n'est plus marqué expérimental. Un jeu dont les réglages ont déjà été enregistrés garde son choix.

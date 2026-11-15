@@ -231,9 +231,9 @@ int main() {
 		// d) Deux grips serrés mais mains à 1 m l'une de l'autre (pas une arme) : pas de liaison.
 		{
 			LossGuard left;
-			const V3 far{ 0.9, 1.3, -0.3 };
-			for (int i = 0; i < 45; i++) left.apply(i / 90.0, TrackTracking, lp, qid, lp, true, hp, qid, true, far, qid, s, true);
-			for (int i = 0; i < 10; i++) left.apply(0.5 + i / 90.0, TrackLost, lp, qid, lp, true, hp, qid, true, far, qid, s, true);
+			const V3 farP{ 0.9, 1.3, -0.3 };
+			for (int i = 0; i < 45; i++) left.apply(i / 90.0, TrackTracking, lp, qid, lp, true, hp, qid, true, farP, qid, s, true);
+			for (int i = 0; i < 10; i++) left.apply(0.5 + i / 90.0, TrackLost, lp, qid, lp, true, hp, qid, true, farP, qid, s, true);
 			check(!left.coupled(), "mains trop éloignées : pas de liaison malgré les grips");
 		}
 	}
@@ -398,7 +398,7 @@ int main() {
 			worst = std::max(worst, od);
 			if (d < 0.85) inside = std::max(inside, (o - p).norm());
 		}
-		check(worst <= s.maxReachM + 0.05 + 1e-9 && g.capped(), "position bloquée à la portée du bras (+5 cm)");
+		check(worst <= s.maxReachM + LossGuard::kReachMarginM + 1e-9 && g.capped(), "position bloquée à la portée du bras (+10 cm)");
 		check(inside < 1e-9, "à portée du bras : aucune modification");
 		check(g.cappedFrames() > 0 && arm.size() < 200 / 3 + 1 - 30, "les positions hors de portée ne sont pas apprises");
 		// Fichier enregistré avec une mémoire plus grande (versions précédentes) : on garde les plus récentes.
